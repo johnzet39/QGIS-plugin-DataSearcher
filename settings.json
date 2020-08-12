@@ -1,0 +1,48 @@
+{
+    "Layers": {
+        "geo_ad_constructions": {
+            "fields" : {
+                "gid": {
+                    "label": "гид",
+                    "source": "other"
+                },
+                "kind_id": {
+                    "label": "Вид",
+                    "source": "layer"
+                },
+                "illegal": {
+                    "label": "Нелегальная",
+                    "source": "layer"
+                },
+                "owner_id": {
+                    "label": "Владелец",
+                    "source": "layer"
+                },
+                "field4": {
+                    "label": "поле4",
+                    "source": "other"
+                },
+                "field5": {
+                    "label": "поле5",
+                    "source": "other"
+                }
+            },
+            "query": "select id, title from schema_reklama.spr_ad_kind"
+            
+        },
+        "spr_ad_kind": {
+            "fields" : {
+                "gid": {
+                    "label": "гид",
+                    "source": "layer"
+                },
+                "kind_id": {
+                    "label": "Вид",
+                    "source": "layer"
+                }
+            },
+            "query": "select id, title from schema_reklama.spr_ad_kind"
+            
+        }
+    }
+}

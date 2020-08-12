@@ -1,0 +1,13 @@
+__pycache__/
+help/
+i18n/
+scripts/
+test/
+pb_tool.cfg
+pylintrc
+resources.qrc
+__test.py
+Makefile
+.vscode/settings.json
+README.txt
+README.html
