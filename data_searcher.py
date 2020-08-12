@@ -22,7 +22,7 @@
  ***************************************************************************/
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt, QVariant
-from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtGui import QIcon, QIntValidator, QDoubleValidator
 from qgis.PyQt.QtWidgets import QAction
 from qgis.PyQt import QtGui, QtWidgets, uic
 from qgis.core import QgsProject, QgsVectorLayer, QgsRelation
@@ -251,7 +251,6 @@ class DataSearcher:
     def loadLayersData(self):
         with open(os.path.join(self.plugin_dir, "settings.json"), "r") as read_file:
             self.settings = json.load(read_file)
-            print(self.settings["Layers"])
 
             for layer in self.settings["Layers"].keys():
                 self.dockwidget.combo_layers.addItem(layer)
@@ -281,7 +280,7 @@ class DataSearcher:
     
     def addWidget(self, index, field_name, field, column_num, content):
         label = QtWidgets.QLabel(content)
-        label.setObjectName("label_"+str(index)) 
+        label.setObjectName("label_"+str(index)+'_'+str(column_num)) 
         label.setText(field["label"])
         self.dockwidget.fieldsLayout.addWidget(label, index, column_num, 1, 1)
         
@@ -303,6 +302,7 @@ class DataSearcher:
         if type_field == 'ValueMap':
             comboBox = QtWidgets.QComboBox(content)
             comboBox.setEditable(True)
+            comboBox.setSizeAdjustPolicy(2) #AdjustToMinimumContentsLengthWithIcon = 2
             comboBox.setObjectName(field_name) 
             valuemap = layer.editorWidgetSetup(idx_field).config()['map']
             for item in valuemap:
@@ -313,6 +313,7 @@ class DataSearcher:
         elif type_field == 'ValueRelation':
             comboBox = QtWidgets.QComboBox(content)
             comboBox.setEditable(True)
+            comboBox.setSizeAdjustPolicy(2) #AdjustToMinimumContentsLengthWithIcon = 2
             print(comboBox.objectName())
             comboBox.setObjectName(field_name) 
             config = layer.editorWidgetSetup(idx_field).config()
@@ -325,7 +326,8 @@ class DataSearcher:
         elif type_field == 'RelationReference':
             comboBox = QtWidgets.QComboBox(content)
             comboBox.setEditable(True)
-            comboBox.setObjectName(field_name) 
+            comboBox.setSizeAdjustPolicy(2) #AdjustToMinimumContentsLengthWithIcon = 2
+            comboBox.setObjectName(field_name)
             config = layer.editorWidgetSetup(idx_field).config()
             configRelation = config['Relation']
             relation = QgsProject.instance().relationManager().relation(configRelation)
@@ -333,11 +335,34 @@ class DataSearcher:
             relLayerKey = relation.fieldPairs()[field_name]
             
             for feat in relLayer.getFeatures():
-                comboBox.addItem(feat[relLayer.displayExpression()].strip(), QVariant(feat[relLayerKey]))
-                break
+                try:
+                    comboBox.addItem((feat[relLayer.displayExpression()]).strip(), QVariant(feat[relLayerKey]))
+                except Exception as e:
+                    pass
             comboBox.setCurrentIndex(-1)
             return comboBox
+        elif type_field == 'CheckBox':
+            checkBox = QtWidgets.QCheckBox(content)
+            checkBox.setObjectName(field_name)
+            config = layer.editorWidgetSetup(idx_field).config()
+            checkedState = config["CheckedState"]
+            uncheckedState = config["UncheckedState"]
+            return checkBox
+        elif type_field == 'Range':
+            # spinBox = QtWidgets.QSpinBox(content)
+            # spinBox.setObjectName(field_name)
+            # config = layer.editorWidgetSetup(idx_field).config()
+            # spinBox.setValue(None)
+            # return spinBox
 
+            config = layer.editorWidgetSetup(idx_field).config()
+            lineEdit = QtWidgets.QLineEdit(content)
+            lineEdit.setObjectName(field_name) 
+            if type(config["Step"]) == int:
+                lineEdit.setValidator(QIntValidator(config["Min"], config["Max"], None))
+            else:
+                lineEdit.setValidator(QDoubleValidator(config["Min"], config["Max"], config["Precision"], None))
+            return lineEdit
 
         return None
 

@@ -25,6 +25,14 @@
                 "field5": {
                     "label": "поле5",
                     "source": "other"
+                },
+                "address_id": {
+                    "label": "Адрес",
+                    "source": "layer"
+                },
+                "street_id": {
+                    "label": "Улица",
+                    "source": "layer"
                 }
             },
             "query": "select id, title from schema_reklama.spr_ad_kind"
