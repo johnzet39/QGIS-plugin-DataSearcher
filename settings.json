@@ -3,42 +3,39 @@
         "geo_ad_constructions": {
             "fields" : {
                 "gid": {
-                    "label": "гид",
-                    "source": "other"
+                    "label": "гид"
                 },
                 "kind_id": {
                     "label": "Вид",
-                    "source": "layer"
+                    "source_type": "layer"
                 },
                 "illegal": {
                     "label": "Нелегальная",
-                    "source": "layer"
+                    "source_type": "layer"
                 },
                 "owner_id": {
                     "label": "Владелец",
-                    "source": "layer"
+                    "source_type": "layer"
                 },
                 "field4": {
-                    "label": "поле4",
-                    "source": "other"
+                    "label": "поле4"
                 },
                 "field5": {
-                    "label": "поле5",
-                    "source": "other"
+                    "label": "поле5"
                 },
                 "address_id": {
                     "label": "Адрес",
-                    "source": "layer",
+                    "source_type": "layer",
                     "isrange": "True"
                 },
                 "street_id": {
                     "label": "Улица",
-                    "source": "layer"
+                    "source_type": "layer"
                 },
                 "archive_date": {
                     "label": "Дата",
-                    "source": "layer",
-                    "isrange": "False"
+                    "source_type": "layer",
+                    "isrange": "True"
                 }
             },
             "query": "select id, title from schema_reklama.spr_ad_kind"
@@ -48,11 +45,11 @@
             "fields" : {
                 "gid": {
                     "label": "гид",
-                    "source": "layer"
+                    "source_type": "layer"
                 },
                 "kind_id": {
                     "label": "Вид",
-                    "source": "layer"
+                    "source_type": "layer"
                 }
             },
             "query": "select id, title from schema_reklama.spr_ad_kind"

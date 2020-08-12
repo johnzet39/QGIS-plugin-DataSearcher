@@ -279,11 +279,11 @@ class DataSearcher:
             field_name = list(ava_fields)[num]
             self.addWidget(index, field_name, ava_fields[field_name], 2, dockWidgetContents)
     
-    def addWidget(self, index, field_name, field, column_num, content):
+    def addWidget(self, row_num, field_name, field, column_num, content):
         label = QtWidgets.QLabel(content)
-        label.setObjectName("label_"+str(index)+'_'+str(column_num)) 
+        label.setObjectName("label_" + field_name) 
         label.setText(field["label"])
-        self.dockwidget.fieldsLayout.addWidget(label, index, column_num, 1, 1)
+        self.dockwidget.fieldsLayout.addWidget(label, row_num, column_num, 1, 1)
 
         isrange = field.get("isrange", False) == 'True'
 
@@ -291,7 +291,7 @@ class DataSearcher:
             widget = self.constructWidget(field_name, field, content)
             if widget:
                 widget.setObjectName(field_name) 
-                self.dockwidget.fieldsLayout.addWidget(widget, index, column_num + 1, 1, 1)
+                self.dockwidget.fieldsLayout.addWidget(widget, row_num, column_num + 1, 1, 1)
         else:
             targetLayout = QtWidgets.QHBoxLayout()
             targetLayout.setObjectName("HL" + field_name)
@@ -301,12 +301,12 @@ class DataSearcher:
             widget_to.setObjectName(field_name + '_to') 
             targetLayout.addWidget(widget_from)
             targetLayout.addWidget(widget_to)
-            self.dockwidget.fieldsLayout.addLayout(targetLayout, index, column_num + 1, 1, 1)
+            self.dockwidget.fieldsLayout.addLayout(targetLayout, row_num, column_num + 1, 1, 1)
         
     
     def constructWidget(self, field_name, field, content):
         widget = None
-        if field["source"] == "layer":
+        if field.get("source_type", "") == "layer":
             widget = self.createWidgetByLayerField(field_name, content)
         else:
             widget = QtWidgets.QLineEdit(content)
@@ -351,6 +351,7 @@ class DataSearcher:
             relLayer = relation.referencedLayer()
             relLayerKey = relation.fieldPairs()[field_name]
             for feat in relLayer.getFeatures():
+                # ===================================================================== РАЗОБРАТЬСЯ В ДАННЫХ В СПРАВОЧНИКЕ!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                 try:
                     comboBox.addItem((feat[relLayer.displayExpression()]).strip(), QVariant(feat[relLayerKey]))
                 except Exception as e:
@@ -385,17 +386,15 @@ class DataSearcher:
         return defaultLineEdit
 
     def clearFieldsLayout(self, layout):
-        print("clear..")
-        print('count before: ', layout.objectName(), layout.count())
-  
+        # print("clear..")
+        # print('count before: ', layout.objectName(), layout.count())
         for i in reversed(range(layout.count())): 
             if layout.itemAt(i).layout():
                 self.clearFieldsLayout(layout.itemAt(i).layout())
                 layout.itemAt(i).layout().setParent(None)
             elif layout.itemAt(i).widget():
-                layout.itemAt(i).widget().setParent(None)
-            
-        print('count after: ', self.dockwidget.fieldsLayout.count())
+                layout.itemAt(i).widget().setParent(None)  
+        # print('count after: ', layout.count(), 'total: ',  self.dockwidget.fieldsLayout.count())
 
     def populateComboLayers(self):
         available_layers = self.settings["Layers"].keys()
