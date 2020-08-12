@@ -26,6 +26,7 @@ from qgis.PyQt.QtGui import QIcon, QIntValidator, QDoubleValidator
 from qgis.PyQt.QtWidgets import QAction
 from qgis.PyQt import QtGui, QtWidgets, uic
 from qgis.core import QgsProject, QgsVectorLayer, QgsRelation
+from qgsdatetimeedit import QgsDateTimeEdit
 # Initialize Qt resources from file resources.py
 from .resources import *
 
@@ -260,7 +261,7 @@ class DataSearcher:
         self.populateFilterFields()
         
     def populateFilterFields(self):
-        self.clearFieldsLayout()
+        self.clearFieldsLayout(self.dockwidget.fieldsLayout)
 
         dockWidgetContents = QtWidgets.QWidget()
         sellayer = self.dockwidget.combo_layers.currentText()
@@ -283,18 +284,36 @@ class DataSearcher:
         label.setObjectName("label_"+str(index)+'_'+str(column_num)) 
         label.setText(field["label"])
         self.dockwidget.fieldsLayout.addWidget(label, index, column_num, 1, 1)
-        
-        if field["source"] == "layer":
-            widget = self.createWidget(field_name, content)
-            if widget:
-                self.dockwidget.fieldsLayout.addWidget(widget, index, column_num + 1, 1, 1)
-                # print (widget.itemData(0), widget.itemData(1), widget.itemData(2).toInt())
-        else:
-            lineEdit = QtWidgets.QLineEdit(content)
-            lineEdit.setObjectName(field_name) 
-            self.dockwidget.fieldsLayout.addWidget(lineEdit, index, column_num + 1, 1, 1)
 
-    def createWidget(self, field_name, content):
+        isrange = field.get("isrange", False) == 'True'
+
+        if not isrange:
+            widget = self.constructWidget(field_name, field, content)
+            if widget:
+                widget.setObjectName(field_name) 
+                self.dockwidget.fieldsLayout.addWidget(widget, index, column_num + 1, 1, 1)
+        else:
+            targetLayout = QtWidgets.QHBoxLayout()
+            targetLayout.setObjectName("HL" + field_name)
+            widget_from = self.constructWidget(field_name, field, content)
+            widget_from.setObjectName(field_name + '_from') 
+            widget_to = self.constructWidget(field_name, field, content)
+            widget_to.setObjectName(field_name + '_to') 
+            targetLayout.addWidget(widget_from)
+            targetLayout.addWidget(widget_to)
+            self.dockwidget.fieldsLayout.addLayout(targetLayout, index, column_num + 1, 1, 1)
+        
+    
+    def constructWidget(self, field_name, field, content):
+        widget = None
+        if field["source"] == "layer":
+            widget = self.createWidgetByLayerField(field_name, content)
+        else:
+            widget = QtWidgets.QLineEdit(content)
+        return widget
+
+
+    def createWidgetByLayerField(self, field_name, content):
         layer = self.dockwidget.combo_layers.currentLayer()
         idx_field = layer.fields().indexFromName(field_name)
         type_field = layer.editorWidgetSetup(idx_field).type()
@@ -302,8 +321,8 @@ class DataSearcher:
         if type_field == 'ValueMap':
             comboBox = QtWidgets.QComboBox(content)
             comboBox.setEditable(True)
-            comboBox.setSizeAdjustPolicy(2) #AdjustToMinimumContentsLengthWithIcon = 2
-            comboBox.setObjectName(field_name) 
+            comboBox.setSizeAdjustPolicy(2) # AdjustToMinimumContentsLengthWithIcon = 2
+            # comboBox.setObjectName(field_name) 
             valuemap = layer.editorWidgetSetup(idx_field).config()['map']
             for item in valuemap:
                 first_key = list(item.keys())[0]
@@ -313,12 +332,10 @@ class DataSearcher:
         elif type_field == 'ValueRelation':
             comboBox = QtWidgets.QComboBox(content)
             comboBox.setEditable(True)
-            comboBox.setSizeAdjustPolicy(2) #AdjustToMinimumContentsLengthWithIcon = 2
-            print(comboBox.objectName())
-            comboBox.setObjectName(field_name) 
+            comboBox.setSizeAdjustPolicy(2) # AdjustToMinimumContentsLengthWithIcon = 2
+            # comboBox.setObjectName(field_name) 
             config = layer.editorWidgetSetup(idx_field).config()
             layer = QgsProject.instance().mapLayers()[config["Layer"]]
-
             for feat in layer.getFeatures():
                 comboBox.addItem(feat[config["Value"]], QVariant(feat[config["Key"]]))
             comboBox.setCurrentIndex(-1)
@@ -326,14 +343,13 @@ class DataSearcher:
         elif type_field == 'RelationReference':
             comboBox = QtWidgets.QComboBox(content)
             comboBox.setEditable(True)
-            comboBox.setSizeAdjustPolicy(2) #AdjustToMinimumContentsLengthWithIcon = 2
-            comboBox.setObjectName(field_name)
+            comboBox.setSizeAdjustPolicy(2) # AdjustToMinimumContentsLengthWithIcon = 2
+            # comboBox.setObjectName(field_name)
             config = layer.editorWidgetSetup(idx_field).config()
             configRelation = config['Relation']
             relation = QgsProject.instance().relationManager().relation(configRelation)
             relLayer = relation.referencedLayer()
             relLayerKey = relation.fieldPairs()[field_name]
-            
             for feat in relLayer.getFeatures():
                 try:
                     comboBox.addItem((feat[relLayer.displayExpression()]).strip(), QVariant(feat[relLayerKey]))
@@ -343,33 +359,43 @@ class DataSearcher:
             return comboBox
         elif type_field == 'CheckBox':
             checkBox = QtWidgets.QCheckBox(content)
-            checkBox.setObjectName(field_name)
+            # checkBox.setObjectName(field_name)
             config = layer.editorWidgetSetup(idx_field).config()
-            checkedState = config["CheckedState"]
-            uncheckedState = config["UncheckedState"]
+            # checkedState = config["CheckedState"]
+            # uncheckedState = config["UncheckedState"]
             return checkBox
         elif type_field == 'Range':
-            # spinBox = QtWidgets.QSpinBox(content)
-            # spinBox.setObjectName(field_name)
-            # config = layer.editorWidgetSetup(idx_field).config()
-            # spinBox.setValue(None)
-            # return spinBox
-
             config = layer.editorWidgetSetup(idx_field).config()
             lineEdit = QtWidgets.QLineEdit(content)
-            lineEdit.setObjectName(field_name) 
+            # lineEdit.setObjectName(field_name) 
             if type(config["Step"]) == int:
                 lineEdit.setValidator(QIntValidator(config["Min"], config["Max"], None))
             else:
                 lineEdit.setValidator(QDoubleValidator(config["Min"], config["Max"], config["Precision"], None))
             return lineEdit
+        elif type_field == 'DateTime':
+            dateTimeEdit = QgsDateTimeEdit(content)
+            # dateTimeEdit.setObjectName(field_name)
+            dateTimeEdit.setAllowNull(True)
+            dateTimeEdit.clear()
+            return dateTimeEdit
 
-        return None
+        defaultLineEdit = QtWidgets.QLineEdit(content)
+        # defaultLineEdit.setObjectName(field_name) 
+        return defaultLineEdit
 
-    def clearFieldsLayout(self):
-        # print("clear..")
-        for i in reversed(range(self.dockwidget.fieldsLayout.count())): 
-            self.dockwidget.fieldsLayout.itemAt(i).widget().setParent(None)
+    def clearFieldsLayout(self, layout):
+        print("clear..")
+        print('count before: ', layout.objectName(), layout.count())
+  
+        for i in reversed(range(layout.count())): 
+            if layout.itemAt(i).layout():
+                self.clearFieldsLayout(layout.itemAt(i).layout())
+                layout.itemAt(i).layout().setParent(None)
+            elif layout.itemAt(i).widget():
+                layout.itemAt(i).widget().setParent(None)
+            
+        print('count after: ', self.dockwidget.fieldsLayout.count())
 
     def populateComboLayers(self):
         available_layers = self.settings["Layers"].keys()

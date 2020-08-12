@@ -33,13 +33,6 @@
      <layout class="QGridLayout" name="fieldsLayout"/>
     </item>
     <item>
-     <widget class="QComboBox" name="comboBox">
-      <property name="editable">
-       <bool>true</bool>
-      </property>
-     </widget>
-    </item>
-    <item>
      <widget class="QTableWidget" name="tableWidget"/>
     </item>
    </layout>

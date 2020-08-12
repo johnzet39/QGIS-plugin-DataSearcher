@@ -28,11 +28,17 @@
                 },
                 "address_id": {
                     "label": "Адрес",
-                    "source": "layer"
+                    "source": "layer",
+                    "isrange": "True"
                 },
                 "street_id": {
                     "label": "Улица",
                     "source": "layer"
+                },
+                "archive_date": {
+                    "label": "Дата",
+                    "source": "layer",
+                    "isrange": "False"
                 }
             },
             "query": "select id, title from schema_reklama.spr_ad_kind"
