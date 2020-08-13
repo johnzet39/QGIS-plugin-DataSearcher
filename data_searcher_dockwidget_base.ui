@@ -21,9 +21,15 @@
        <widget class="QgsMapLayerComboBox" name="combo_layers"/>
       </item>
       <item>
-       <widget class="QPushButton" name="pushButton_toMap">
+       <widget class="QPushButton" name="buttonSearch">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
         <property name="text">
-         <string>Показать</string>
+         <string>Найти</string>
         </property>
        </widget>
       </item>
@@ -33,7 +39,7 @@
      <layout class="QGridLayout" name="fieldsLayout"/>
     </item>
     <item>
-     <widget class="QTableWidget" name="tableWidget"/>
+     <widget class="QTableWidget" name="tableResult"/>
     </item>
    </layout>
   </widget>

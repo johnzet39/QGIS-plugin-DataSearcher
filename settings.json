@@ -1,58 +1,101 @@
 {
     "Layers": {
         "geo_ad_constructions": {
+            "columns_count": 4,
             "fields" : {
                 "gid": {
                     "label": "гид"
                 },
                 "kind_id": {
                     "label": "Вид",
-                    "source_type": "layer"
+                    "source_type": "own"
+                },
+                "_": {
                 },
                 "illegal": {
                     "label": "Нелегальная",
-                    "source_type": "layer"
-                },
-                "owner_id": {
-                    "label": "Владелец",
-                    "source_type": "layer"
+                    "source_type": "own"
                 },
                 "field4": {
                     "label": "поле4"
                 },
                 "field5": {
-                    "label": "поле5"
+                    "label": "поле5",
+                    "source_type": "layer",
+                    "layer_name": "ad_acts",
+                    "field_key": "id",
+                    "field_title": "reg_number"
                 },
                 "address_id": {
                     "label": "Адрес",
-                    "source_type": "layer",
-                    "isrange": "True"
+                    "source_type": "own",
+                    "isrange": "False"
                 },
                 "street_id": {
                     "label": "Улица",
-                    "source_type": "layer"
+                    "source_type": "own"
                 },
                 "archive_date": {
                     "label": "Дата",
-                    "source_type": "layer",
+                    "source_type": "own",
                     "isrange": "True"
+                },
+                "address": {
+                    "label": "Адрес текст",
+                    "source_type": "own"
+                },
+                "perm_date":{
+                    "label": "Период действия",
+                    "source_type": "custom",
+                    "field_type": "DateTime",
+                    "isrange": "True"
+                },
+                "test_checkbox":{
+                    "label": "test_checkbox",
+                    "source_type": "custom",
+                    "field_type": "Checkbox"
+                },
+                "test_empty":{
+                    "label": "test_empty",
+                    "source_type": "custom"
+                },
+                "test_rangeint":{
+                    "label": "test_rangeint",
+                    "source_type": "custom",
+                    "field_type": "RangeInt"
+                },
+                "test_rangefloat":{
+                    "label": "test_rangefloat",
+                    "source_type": "custom",
+                    "field_type": "RangeFloat"
                 }
             },
-            "query": "select id, title from schema_reklama.spr_ad_kind"
+            "query": [
+                "select gid, kind_id, address, archive_date  ", 
+                "",
+                " from schema_reklama.geo_ad_constructions where ",
+                "     (%(gid)s is null OR gid = %(gid)s) ",
+                " AND (%(illegal)s is null OR illegal = %(illegal)s)",
+                " AND (%(address)s is null OR address like %(address)s) ",
+                " AND (%(archive_date_from)s is null OR archive_date >= %(archive_date_from)s) ",
+                " AND (%(archive_date_to)s is null OR archive_date < %(archive_date_to)s) ",
+                " limit 10 "
+            ]
             
         },
         "spr_ad_kind": {
+            "columns_count": 3,
             "fields" : {
                 "gid": {
                     "label": "гид",
-                    "source_type": "layer"
+                    "source_type": "own"
                 },
                 "kind_id": {
                     "label": "Вид",
-                    "source_type": "layer"
+                    "source_type": "own"
                 }
             },
-            "query": "select id, title from schema_reklama.spr_ad_kind"
+            "query": "select id, reg_number, start_date from schema_reklama.ad_acts"
             
         }
     }
