@@ -297,9 +297,13 @@ class DataSearcher:
         """
         # сортировка полей в N столбцов. Порядок по вертикали
         """
-        column_count = self.settings["Layers"][sellayer].get("columns_count", 2)
+        column_count = self.settings["Layers"][sellayer].get("columns_count", 1)
         cnt = len(ava_fields)
         column_size = cnt // column_count
+        print(0, column_size, cnt)
+        if column_size * column_count < cnt:
+            column_size += 1
+            print(1, column_size)
         row = 0
         column = 0
         for field_name in ava_fields:
@@ -317,7 +321,6 @@ class DataSearcher:
         self.dockwidget.fieldsLayout.addWidget(label, row_num, column_num, 1, 1)
 
         isrange = field.get("isrange", False) == 'True'
-
         if not isrange:
             widget = self.constructWidget(field_name, field, content)
             if widget:
@@ -371,6 +374,13 @@ class DataSearcher:
             lineEdit = QtWidgets.QLineEdit(content)
             lineEdit.setValidator(QDoubleValidator(-999999999999, 999999999999, 10, None))
             return lineEdit
+        elif field.get("field_type", "").lower() == 'combobox':
+            combobox = QtWidgets.QComboBox(content)
+            if "combobox_values" in field:
+                for val in field["combobox_values"]:
+                    combobox.addItem(field["combobox_values"][val], QVariant(val))
+            combobox.setCurrentIndex(-1)
+            return combobox
         return QtWidgets.QLineEdit(content)
 
 
@@ -571,7 +581,7 @@ class DataSearcher:
                 if widget.objectName() == widget_name:
                     if widget.metaObject().className() == 'QLineEdit':
                         print('QLineEdit: ', widget_name)
-                        value = widget.text().strip()
+                        value = widget.text().strip().lower()
                         return value if len(value) > 0 else None
                     elif widget.metaObject().className() == 'QCheckBox':
                         print('QCheckBox: ', widget_name)
@@ -580,7 +590,7 @@ class DataSearcher:
                     elif widget.metaObject().className() == 'QComboBox':
                         print('QComboBox: ', widget_name)
                         value = widget.currentData()
-                        return value if value is not None else None
+                        return value if value is not None and len(str(value)) > 0  else None
                     elif widget.metaObject().className() == 'QgsDateTimeEdit':
                         print('QgsDateTimeEdit: ', widget_name)
                         value_str = widget.text()

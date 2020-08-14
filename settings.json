@@ -44,41 +44,59 @@
                     "label": "Адрес текст",
                     "source_type": "own"
                 },
-                "perm_date":{
+                "perm_date": {
                     "label": "Период действия",
                     "source_type": "custom",
                     "field_type": "DateTime",
                     "isrange": "True"
                 },
-                "test_checkbox":{
+                "test_checkbox": {
                     "label": "test_checkbox",
                     "source_type": "custom",
                     "field_type": "Checkbox"
                 },
-                "test_empty":{
+                "perm_code": {
+                    "label": "Номер разрешения",
+                    "source_type": "custom",
+                    "field_type": "RangeInt"
+                },
+                "test_empty": {
                     "label": "test_empty",
                     "source_type": "custom"
                 },
-                "test_rangeint":{
+                "test_rangeint": {
                     "label": "test_rangeint",
                     "source_type": "custom",
                     "field_type": "RangeInt"
                 },
-                "test_rangefloat":{
+                "test_combobox": {
+                    "label": "combobox",
+                    "source_type": "custom",
+                    "field_type": "ComboBox",
+                    "combobox_values": {
+                        "": "",
+                        "1": "value1",
+                        "2": "value2"
+                    }
+                },
+                "test_rangefloat": {
                     "label": "test_rangefloat",
                     "source_type": "custom",
                     "field_type": "RangeFloat"
                 }
             },
             "query": [
-                "select gid, kind_id, address, archive_date  ", 
+                "select g.gid, g.kind_id, g.address, g.archive_date, p.code  ", 
                 "",
-                " from schema_reklama.geo_ad_constructions where ",
-                "     (%(gid)s is null OR gid = %(gid)s) ",
-                " AND (%(illegal)s is null OR illegal = %(illegal)s)",
-                " AND (%(address)s is null OR address like %(address)s) ",
-                " AND (%(archive_date_from)s is null OR archive_date >= %(archive_date_from)s) ",
-                " AND (%(archive_date_to)s is null OR archive_date < %(archive_date_to)s) ",
+                " from schema_reklama.geo_ad_constructions g ",
+                " LEFT JOIN schema_reklama.ad_permissions p ON p.construction_id = g.id",
+                " WHERE ",
+                "     (%(gid)s is null OR g.gid = %(gid)s) ",
+                " AND (%(illegal)s is null OR g.illegal = %(illegal)s)",
+                " AND (%(address)s is null OR g.address like %(address)s) ",
+                " AND (%(archive_date_from)s is null OR g.archive_date >= %(archive_date_from)s) ",
+                " AND (%(archive_date_to)s is null OR g.archive_date < %(archive_date_to)s) ",
+                " AND (%(perm_code)s is null OR p.code = %(perm_code)s)",
                 " limit 10 "
             ]
             
@@ -86,16 +104,16 @@
         "spr_ad_kind": {
             "columns_count": 3,
             "fields" : {
-                "gid": {
-                    "label": "гид",
+                "id": {
+                    "label": "id",
                     "source_type": "own"
                 },
-                "kind_id": {
-                    "label": "Вид",
+                "title": {
+                    "label": "title",
                     "source_type": "own"
                 }
             },
-            "query": "select id, reg_number, start_date from schema_reklama.ad_acts"
+            "query": "select id, title from schema_reklama.spr_ad_kind"
             
         }
     }

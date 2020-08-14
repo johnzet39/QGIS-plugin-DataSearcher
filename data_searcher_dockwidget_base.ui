@@ -16,24 +16,33 @@
   <widget class="QWidget" name="dockWidgetContents">
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
-     <layout class="QHBoxLayout" name="horizontalLayout">
-      <item>
-       <widget class="QgsMapLayerComboBox" name="combo_layers"/>
-      </item>
-      <item>
-       <widget class="QPushButton" name="buttonSearch">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="text">
-         <string>Найти</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
+     <widget class="QGroupBox" name="groupBox">
+      <property name="title">
+       <string/>
+      </property>
+      <layout class="QHBoxLayout" name="horizontalLayout">
+       <item>
+        <widget class="QgsMapLayerComboBox" name="combo_layers"/>
+       </item>
+       <item>
+        <widget class="QPushButton" name="buttonSearch">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="text">
+          <string>Найти</string>
+         </property>
+         <property name="icon">
+          <iconset resource="resources.qrc">
+           <normaloff>:/plugins/_Data_searcher/icons/filter_32.png</normaloff>:/plugins/_Data_searcher/icons/filter_32.png</iconset>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
     </item>
     <item>
      <layout class="QGridLayout" name="fieldsLayout"/>
