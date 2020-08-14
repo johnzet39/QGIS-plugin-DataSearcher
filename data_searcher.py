@@ -23,7 +23,7 @@
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt, QVariant
 from qgis.PyQt.QtGui import QIcon, QIntValidator, QDoubleValidator
-from qgis.PyQt.QtWidgets import QAction
+from qgis.PyQt.QtWidgets import QAction, QTableWidgetItem
 from qgis.PyQt import QtGui, QtWidgets, uic
 from qgis.core import QgsProject, QgsVectorLayer, QgsRelation, QgsDataSourceUri
 from qgsdatetimeedit import QgsDateTimeEdit
@@ -80,10 +80,12 @@ class DataSearcher:
 
         self.pluginIsActive = False
         self.dockwidget = None
+        self.fieldsLayout = None
 
         self.settings = None
         self.layer = None
         self.connInfo = None
+        self.columnid_name = None
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -232,6 +234,8 @@ class DataSearcher:
             if self.dockwidget == None:
                 # Create the dockwidget (after translation) and keep reference
                 self.dockwidget = DataSearcherDockWidget()
+                # self.fieldsLayout = self.dockwidget.fieldsLayout
+                self.fieldsLayout = self.dockwidget.fieldsGroupBox.layout().itemAt(0)
             self.connectActions()
 
             # connect to provide cleanup on closing of dockwidget
@@ -248,6 +252,7 @@ class DataSearcher:
     def connectActions(self):
         self.dockwidget.buttonSearch.clicked.connect(self.execSearch)
         self.dockwidget.buttonReset.clicked.connect(self.execReset)
+        self.dockwidget.tableResult.itemDoubleClicked.connect(self.execDoubleClickedTable)
         # self.dockwidget.combo_layers.currentIndexChanged.connect(self.comboLayersChanged) #move to populateComboLayers
         print("connect")
 
@@ -255,6 +260,7 @@ class DataSearcher:
         self.dockwidget.buttonSearch.clicked.disconnect(self.execSearch)
         self.dockwidget.buttonReset.clicked.disconnect(self.execReset)
         self.dockwidget.combo_layers.currentIndexChanged.disconnect(self.comboLayersChanged)
+        self.dockwidget.tableResult.itemDoubleClicked.disconnect(self.execDoubleClickedTable)
         print('disconnect')
 
     def loadLayersData(self):
@@ -274,7 +280,7 @@ class DataSearcher:
         self.populateFilterFields()
 
     def populateFilterFields(self):
-        self.clearFieldsLayout(self.dockwidget.fieldsLayout)
+        self.clearFieldsLayout(self.fieldsLayout)
 
         if self.dockwidget.combo_layers.count() <= 0:
             return
@@ -314,22 +320,18 @@ class DataSearcher:
         """
         column_count = self.settings["Layers"][sellayer].get("columns_count", 1)
         cnt = len(ava_fields)
-        
-        
-        # print(000, cnt)
+
         for k in ava_fields.keys():
-            print(k)
             if "col_span" in ava_fields[k].keys():
                 cnt += ava_fields[k]["col_span"] - 1
-        # print(111, cnt)
-        
+
         column_size = cnt // column_count
         if column_size * column_count < cnt:
             column_size += 1
         row = 0
         column = 0
         for field_name in ava_fields:
-            if self.dockwidget.fieldsLayout.itemAtPosition(row, column):
+            if self.fieldsLayout.itemAtPosition(row, column):
                 row += 1
             if row >= column_size:
                 row = 0
@@ -342,7 +344,7 @@ class DataSearcher:
         label = QtWidgets.QLabel(content)
         label.setObjectName("label_" + field_name) 
         label.setText("{1}  {0}:".format(field["label"], "|" if column_num > 0 else ""))
-        self.dockwidget.fieldsLayout.addWidget(label, row_num, column_num, 1, 1)
+        self.fieldsLayout.addWidget(label, row_num, column_num, 1, 1)
 
         cell_size = field.get("col_span", 1)
         if cell_size > 1:
@@ -353,7 +355,7 @@ class DataSearcher:
             widget = self.constructWidget(field_name, field, content)
             if widget:
                 widget.setObjectName(field_name) 
-                self.dockwidget.fieldsLayout.addWidget(widget, row_num, column_num + 1, 1, cell_size)
+                self.fieldsLayout.addWidget(widget, row_num, column_num + 1, 1, cell_size)
         else:
             rangeLayout = QtWidgets.QHBoxLayout()
             rangeLayout.setObjectName("RHL_" + field_name)
@@ -364,7 +366,7 @@ class DataSearcher:
                 rangeLayout.addWidget(widget_from)
                 widget_to.setObjectName(field_name + '_to') 
                 rangeLayout.addWidget(widget_to)
-                self.dockwidget.fieldsLayout.addLayout(rangeLayout, row_num, column_num + 1, 1, cell_size)
+                self.fieldsLayout.addLayout(rangeLayout, row_num, column_num + 1, 1, cell_size)
 
     def constructWidget(self, field_name, field, content):
         widget = None
@@ -395,7 +397,7 @@ class DataSearcher:
     def createWidgetSame(self, field_name, field, content):
         if "source_field" in field:
             source_field = field["source_field"]
-            source_widget = (self.findWidgetByName(self.dockwidget.fieldsLayout, source_field))
+            source_widget = (self.findWidgetByName(self.fieldsLayout, source_field))
             if source_widget.metaObject().className() == 'QComboBox':
                 widget = QtWidgets.QComboBox(content)
                 items = ((source_widget.itemData(i), source_widget.itemText(i))  for i in range(0, source_widget.count()))
@@ -490,7 +492,6 @@ class DataSearcher:
             return combobox
         return QgsFilterLineEdit(content)
 
-
     def createWidgetByLayer(self, field_name, field, content):
         layer_name = None
         field_key = None
@@ -517,7 +518,7 @@ class DataSearcher:
         idx_field = layer.fields().indexFromName(field_name)
         field_type = layer.editorWidgetSetup(idx_field).type()
         if not idx_field >= 0:
-            print ("Field {0} not found in the layer properties. QgsFilterLineEdit() was set instead settings value.".format(field_name))
+            print("Field {0} not found in the layer properties. QgsFilterLineEdit() was set instead settings value.".format(field_name))
             return QgsFilterLineEdit(content)
 
         if field_type == 'ValueMap':
@@ -593,7 +594,7 @@ class DataSearcher:
                 layout.itemAt(i).layout().setParent(None)
             elif layout.itemAt(i).widget():
                 layout.itemAt(i).widget().setParent(None)  
-        # print('count after: ', layout.count(), 'total: ',  self.dockwidget.fieldsLayout.count())
+        # print('count after: ', layout.count(), 'total: ',  self.fieldsLayout.count())
 
     def populateComboLayers(self):
         available_layers = self.settings["Layers"].keys()
@@ -635,6 +636,7 @@ class DataSearcher:
 
         sellayer = self.dockwidget.combo_layers.currentText()
         fields = self.settings["Layers"][sellayer]["fields"]
+        self.columnid_name = self.settings["Layers"][sellayer]["columnid_name"]
         query = "".join(self.settings["Layers"][sellayer]["query"])
 
         attributes_values = self.generateQueryAttributesValues(fields)
@@ -649,18 +651,29 @@ class DataSearcher:
                 cursor = conn.cursor(cursor_factory=RealDictCursor)
 
                 mogrified_query = cursor.mogrify(query, attributes_values)
-                print(mogrified_query)
+                # print(mogrified_query)
                 cursor.execute(mogrified_query)
                 results = cursor.fetchall()
-                print(results)
+                # print(results)
 
-                
+                headers = list(results[0].keys())
+                headers.insert(0, headers.pop(headers.index(self.columnid_name)))
 
-                # cnt_row = len(results)
-                # cnt_col = len(fields)
+                cnt_rows = len(results)
+                cnt_cols = len(headers)
 
-                # self.dockwidget.tableResult.setRowCount(cnt_row)
-                # self.dockwidget.tableResult.setColumnCount(cnt_col)
+                table = self.dockwidget.tableResult
+                table.setRowCount(cnt_rows)
+                table.setColumnCount(cnt_cols)
+                table.setHorizontalHeaderLabels(headers)
+                # table.setColumnHidden(0, True)
+                for rn in range(0, cnt_rows):
+                    for cn in range(0, cnt_cols-1):
+                        item = QTableWidgetItem(str(results[rn][headers[cn]]))
+                        table.setItem(rn, cn, item)
+                # table.horizontalHeaderItem(0).setToolTip("Column 1 ")
+                table.resizeColumnsToContents()
+                self.iface.mainWindow().statusBar().showMessage(u'Всего найдено: ' + str(cnt_rows))
 
             except Exception as e:
                 print(e)
@@ -676,12 +689,12 @@ class DataSearcher:
             if not field == "_":
                 isrange = fields[field].get("isrange", False) == 'True'
                 if isrange:
-                    value_from = self.getFieldValue(self.dockwidget.fieldsLayout, field + "_from")
+                    value_from = self.getFieldValue(self.fieldsLayout, field + "_from")
                     values_dict[field + "_from"] = value_from
-                    value_to = self.getFieldValue(self.dockwidget.fieldsLayout, field + "_to")
+                    value_to = self.getFieldValue(self.fieldsLayout, field + "_to")
                     values_dict[field + "_to"] = value_to
                 else:
-                    value = self.getFieldValue(self.dockwidget.fieldsLayout, field)
+                    value = self.getFieldValue(self.fieldsLayout, field)
                     values_dict[field] = value
         return values_dict
 
@@ -695,23 +708,23 @@ class DataSearcher:
                 widget = layout.itemAt(i).widget()
                 if widget.objectName() == widget_name:
                     if widget.metaObject().className() == 'QLineEdit':
-                        print('QLineEdit: ', widget_name)
+                        # print('QLineEdit: ', widget_name)
                         value = widget.text().strip().lower()
                         return value if len(value) > 0 else None
                     if widget.metaObject().className() == 'QgsFilterLineEdit':
-                        print('QLineEdit: ', widget_name)
+                        # print('QLineEdit: ', widget_name)
                         value = widget.value().strip().lower()
                         return value if len(value) > 0 else None
                     elif widget.metaObject().className() == 'QCheckBox':
-                        print('QCheckBox: ', widget_name)
+                        # print('QCheckBox: ', widget_name)
                         value = widget.isChecked()
                         return True if value else None
                     elif widget.metaObject().className() == 'QComboBox':
-                        print('QComboBox: ', widget_name)
+                        # print('QComboBox: ', widget_name)
                         value = widget.currentData()
                         return value if value is not None and len(str(value)) > 0  else None
                     elif widget.metaObject().className() == 'QgsDateTimeEdit':
-                        print('QgsDateTimeEdit: ', widget_name)
+                        # print('QgsDateTimeEdit: ', widget_name)
                         value_str = widget.text()
                         value = None
                         if value_str != 'NULL':
@@ -720,7 +733,7 @@ class DataSearcher:
         return None
 
     def execReset(self):
-        self.clearWidgetsValues(self.dockwidget.fieldsLayout)
+        self.clearWidgetsValues(self.fieldsLayout)
 
     def clearWidgetsValues(self, layout):
         for i in reversed(range(layout.count())): 
@@ -739,3 +752,20 @@ class DataSearcher:
                                 widget.clear()
                             except Exception as e:
                                 print(e)
+
+    def execDoubleClickedTable(self, item):
+        row = item.row()
+        for feature in self.layer.getFeatures(
+                "{0} = {1}".format(
+                    self.columnid_name,
+                    self.dockwidget.tableResult.item(row, 0).text())
+        ):
+            self.iface.openFeatureForm(self.layer, feature, False, False)
+            self.layer.select(feature.id())
+            self.iface.mapCanvas().setCenter(feature.geometry().boundingBox().center())
+            self.iface.mapCanvas().refresh()
+        
+
+        
+
+

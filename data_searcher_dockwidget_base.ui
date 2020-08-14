@@ -14,11 +14,11 @@
    <string>Data Searcher</string>
   </property>
   <widget class="QWidget" name="dockWidgetContents">
-   <layout class="QVBoxLayout" name="verticalLayout">
+   <layout class="QVBoxLayout" name="verticalLayout_2">
     <item>
      <widget class="QGroupBox" name="groupBox">
       <property name="title">
-       <string/>
+       <string>Слой</string>
       </property>
       <layout class="QHBoxLayout" name="horizontalLayout">
        <item>
@@ -65,10 +65,35 @@
      </widget>
     </item>
     <item>
-     <layout class="QGridLayout" name="fieldsLayout"/>
+     <widget class="QGroupBox" name="fieldsGroupBox">
+      <property name="title">
+       <string>Фильтр для поиска</string>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout">
+       <item>
+        <layout class="QGridLayout" name="fieldsLayout"/>
+       </item>
+      </layout>
+     </widget>
     </item>
     <item>
-     <widget class="QTableWidget" name="tableResult"/>
+     <widget class="QTableWidget" name="tableResult">
+      <property name="editTriggers">
+       <set>QAbstractItemView::NoEditTriggers</set>
+      </property>
+      <property name="selectionMode">
+       <enum>QAbstractItemView::SingleSelection</enum>
+      </property>
+      <property name="selectionBehavior">
+       <enum>QAbstractItemView::SelectRows</enum>
+      </property>
+      <property name="sortingEnabled">
+       <bool>true</bool>
+      </property>
+      <attribute name="horizontalHeaderStretchLastSection">
+       <bool>true</bool>
+      </attribute>
+     </widget>
     </item>
    </layout>
   </widget>

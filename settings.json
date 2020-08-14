@@ -2,6 +2,7 @@
     "Layers": {
         "geo_ad_constructions": {
             "columns_count": 4,
+            "columnid_name": "gid",
             "fields" : {
                 "gid": {
                     "label": "гид"
@@ -19,7 +20,7 @@
                 },
                 "owner_id": {
                     "label": "Владелец",
-                    "source_type": "own",
+                    "source_type": "other",
                     "col_span": 2
                 },
                 "manufacturer_id": {
@@ -30,7 +31,7 @@
                 },
                 "land_owner_id": {
                     "label": "Собственник",
-                    "source_type": "postgres",
+                    "source_type1": "postgres",
                     "query_data": "select id, owner from schema_reklama.v_spr_persons_firms order by owner",
                     "field_key": "id",
                     "field_title": "owner",
@@ -103,7 +104,7 @@
                 }
             },
             "query": [
-                "select g.gid, g.kind_id, g.address, g.archive_date, p.code  ", 
+                "select g.gid, g.kind_id as \"Вид\", g.address, g.archive_date, p.code as \"Номер разрешения\" ", 
                 "",
                 " from schema_reklama.geo_ad_constructions g ",
                 " LEFT JOIN schema_reklama.ad_permissions p ON p.construction_id = g.id",
@@ -120,6 +121,7 @@
         },
         "spr_ad_kind": {
             "columns_count": 3,
+            "columnid_name": "gid",
             "fields" : {
                 "id": {
                     "label": "id",
