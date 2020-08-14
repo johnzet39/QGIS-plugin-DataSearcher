@@ -27,6 +27,7 @@ from qgis.PyQt.QtWidgets import QAction
 from qgis.PyQt import QtGui, QtWidgets, uic
 from qgis.core import QgsProject, QgsVectorLayer, QgsRelation, QgsDataSourceUri
 from qgsdatetimeedit import QgsDateTimeEdit
+from qgsfilterlineedit import QgsFilterLineEdit
 # Initialize Qt resources from file resources.py
 from .resources import *
 
@@ -81,6 +82,8 @@ class DataSearcher:
         self.dockwidget = None
 
         self.settings = None
+        self.layer = None
+        self.connInfo = None
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -217,7 +220,7 @@ class DataSearcher:
 
     def run(self):
         """Run method that loads and starts the plugin"""
-
+        print("run start: ", datetime.now().strftime("%H:%M:%S.%f")[:-3])
         if not self.pluginIsActive:
             self.pluginIsActive = True
 
@@ -240,13 +243,17 @@ class DataSearcher:
             self.iface.addDockWidget(Qt.BottomDockWidgetArea, self.dockwidget)
             self.dockwidget.show()
 
+        print("run end: ", datetime.now().strftime("%H:%M:%S.%f")[:-3])
+
     def connectActions(self):
         self.dockwidget.buttonSearch.clicked.connect(self.execSearch)
+        self.dockwidget.buttonReset.clicked.connect(self.execReset)
         # self.dockwidget.combo_layers.currentIndexChanged.connect(self.comboLayersChanged) #move to populateComboLayers
         print("connect")
 
     def disconnectActions(self):
         self.dockwidget.buttonSearch.clicked.disconnect(self.execSearch)
+        self.dockwidget.buttonReset.clicked.disconnect(self.execReset)
         self.dockwidget.combo_layers.currentIndexChanged.disconnect(self.comboLayersChanged)
         print('disconnect')
 
@@ -258,15 +265,23 @@ class DataSearcher:
 
     def comboLayersChanged(self):
         print("comboLayersChanged..")
+        if self.dockwidget.combo_layers.count() <= 0:
+            return
+
+        self.layer = self.dockwidget.combo_layers.currentLayer()
+        if self.layer:
+            self.connInfo = QgsDataSourceUri(self.layer.dataProvider().dataSourceUri(expandAuthConfig=True))
         self.populateFilterFields()
-        
+
     def populateFilterFields(self):
         self.clearFieldsLayout(self.dockwidget.fieldsLayout)
 
+        if self.dockwidget.combo_layers.count() <= 0:
+            return
         dockWidgetContents = QtWidgets.QWidget()
         sellayer = self.dockwidget.combo_layers.currentText()
         ava_fields = self.settings["Layers"][sellayer]["fields"]
-        
+
         """
         # сортировка полей в 2 столбца. Порядок по вертикали
         """
@@ -299,33 +314,46 @@ class DataSearcher:
         """
         column_count = self.settings["Layers"][sellayer].get("columns_count", 1)
         cnt = len(ava_fields)
+        
+        
+        # print(000, cnt)
+        for k in ava_fields.keys():
+            print(k)
+            if "col_span" in ava_fields[k].keys():
+                cnt += ava_fields[k]["col_span"] - 1
+        # print(111, cnt)
+        
         column_size = cnt // column_count
-        print(0, column_size, cnt)
         if column_size * column_count < cnt:
             column_size += 1
-            print(1, column_size)
         row = 0
         column = 0
         for field_name in ava_fields:
+            if self.dockwidget.fieldsLayout.itemAtPosition(row, column):
+                row += 1
             if row >= column_size:
                 row = 0
                 column += 2
             if not field_name == "_":
                 self.addWidget(row, field_name, ava_fields[field_name], column, dockWidgetContents)
             row += 1
-                
+
     def addWidget(self, row_num, field_name, field, column_num, content):
         label = QtWidgets.QLabel(content)
         label.setObjectName("label_" + field_name) 
         label.setText("{1}  {0}:".format(field["label"], "|" if column_num > 0 else ""))
         self.dockwidget.fieldsLayout.addWidget(label, row_num, column_num, 1, 1)
 
+        cell_size = field.get("col_span", 1)
+        if cell_size > 1:
+            cell_size += cell_size - 1
+
         isrange = field.get("isrange", False) == 'True'
         if not isrange:
             widget = self.constructWidget(field_name, field, content)
             if widget:
                 widget.setObjectName(field_name) 
-                self.dockwidget.fieldsLayout.addWidget(widget, row_num, column_num + 1, 1, 1)
+                self.dockwidget.fieldsLayout.addWidget(widget, row_num, column_num + 1, 1, cell_size)
         else:
             rangeLayout = QtWidgets.QHBoxLayout()
             rangeLayout.setObjectName("RHL_" + field_name)
@@ -336,25 +364,104 @@ class DataSearcher:
                 rangeLayout.addWidget(widget_from)
                 widget_to.setObjectName(field_name + '_to') 
                 rangeLayout.addWidget(widget_to)
-                self.dockwidget.fieldsLayout.addLayout(rangeLayout, row_num, column_num + 1, 1, 1)
-        
-    
+                self.dockwidget.fieldsLayout.addLayout(rangeLayout, row_num, column_num + 1, 1, cell_size)
+
     def constructWidget(self, field_name, field, content):
         widget = None
-        if field.get("source_type", "").lower() == "own":
-            widget = self.createWidgetByOwnField(field_name, content)
-        elif field.get("source_type", "").lower() == "layer":
-            widget = self.createWidgetByLayer(field_name, field, content)
-        elif field.get("source_type", "").lower() == "custom":
-            widget = self.createWidgetCustom(field_name, field, content)
-        else:
-            widget = QtWidgets.QLineEdit(content)
+        source_type = field.get("source_type", None)
+        if not source_type:
+            return QgsFilterLineEdit(content)
 
-        minmax_size = field.get("minmax_size", None)
-        if minmax_size:
-            widget.setMinimumWidth(minmax_size[0])
-            widget.setMaximumWidth(minmax_size[1])
+        if source_type.lower() == "own":
+            widget = self.createWidgetByOwnField(field_name, content)
+        elif source_type.lower() == "layer":
+            widget = self.createWidgetByLayer(field_name, field, content)
+        elif source_type.lower() == "custom":
+            widget = self.createWidgetCustom(field_name, field, content)
+        elif source_type.lower() == "same":
+            widget = self.createWidgetSame(field_name, field, content)
+        elif source_type.lower() == "postgres":
+            widget = self.createWidgetByPostgresTable(field_name, field, content)
+        else:
+            widget = QgsFilterLineEdit(content)
+
+        if widget:
+            minmax_size = field.get("minmax_size", None)
+            if minmax_size:
+                widget.setMinimumWidth(minmax_size[0])
+                widget.setMaximumWidth(minmax_size[1])
         return widget
+
+    def createWidgetSame(self, field_name, field, content):
+        if "source_field" in field:
+            source_field = field["source_field"]
+            source_widget = (self.findWidgetByName(self.dockwidget.fieldsLayout, source_field))
+            if source_widget.metaObject().className() == 'QComboBox':
+                widget = QtWidgets.QComboBox(content)
+                items = ((source_widget.itemData(i), source_widget.itemText(i))  for i in range(0, source_widget.count()))
+                for item in items:
+                    widget.addItem(item[1], QVariant(item[0]))
+                widget.setCurrentIndex(-1)
+                widget.setEditable(True)
+                return widget
+        print ("Same field not found. QgsFilterLineEdit was set.")
+        return QgsFilterLineEdit(content)
+
+
+
+    def findWidgetByName(self, layout, widget_name):
+        for i in reversed(range(layout.count())): 
+            if layout.itemAt(i).layout():
+                widget = self.getFieldValue(layout.itemAt(i).layout(), widget_name)
+                if widget: 
+                    return widget
+            elif layout.itemAt(i).widget():
+                widget = layout.itemAt(i).widget()
+                if widget.objectName() == widget_name:
+                    return widget
+
+    def createWidgetByPostgresTable(self, field_name, field, content):
+        query_data = None
+        field_key = None
+        field_title = None
+        try:
+            query_data = field["query_data"]
+            field_key = field["field_key"]
+            field_title = field["field_title"]
+        except Exception as e:
+            print(e)
+            return None
+
+        comboBox = QtWidgets.QComboBox(content)
+        comboBox.setEditable(True)
+
+        if len(query_data) > 0:
+            try:
+                conn = psycopg2.connect(
+                    "dbname='" + self.connInfo.database() + 
+                    "' host='" + self.connInfo.host() + 
+                    "' user='" + self.connInfo.username() + 
+                    "' password='" + self.connInfo.password() + "'")
+                cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+                cursor.execute(query_data)
+                results = cursor.fetchall()
+                for row in results:
+                    comboBox.addItem(row[field_title], QVariant(row[field_key]))
+            except Exception as e:
+                print(e)
+            finally:
+                try:
+                    cursor.close()
+                except:
+                    print("Cursor not found")
+                try:
+                    conn.close()
+                except:
+                    print("Connection not found")
+
+        comboBox.setCurrentIndex(-1)
+        return comboBox
 
     def createWidgetCustom(self, field_name, field, content):
         if field.get("field_type", "").lower() == "datetime":
@@ -367,11 +474,11 @@ class DataSearcher:
             checkBox = QtWidgets.QCheckBox(content)
             return checkBox
         elif field.get("field_type", "").lower() == "rangeint":
-            lineEdit = QtWidgets.QLineEdit(content)
+            lineEdit = QgsFilterLineEdit(content)
             lineEdit.setValidator(QIntValidator(-9999999999, 9999999999, None))
             return lineEdit
         elif field.get("field_type", "").lower() == 'rangefloat':
-            lineEdit = QtWidgets.QLineEdit(content)
+            lineEdit = QgsFilterLineEdit(content)
             lineEdit.setValidator(QDoubleValidator(-999999999999, 999999999999, 10, None))
             return lineEdit
         elif field.get("field_type", "").lower() == 'combobox':
@@ -381,7 +488,7 @@ class DataSearcher:
                     combobox.addItem(field["combobox_values"][val], QVariant(val))
             combobox.setCurrentIndex(-1)
             return combobox
-        return QtWidgets.QLineEdit(content)
+        return QgsFilterLineEdit(content)
 
 
     def createWidgetByLayer(self, field_name, field, content):
@@ -409,6 +516,9 @@ class DataSearcher:
         layer = self.dockwidget.combo_layers.currentLayer()
         idx_field = layer.fields().indexFromName(field_name)
         field_type = layer.editorWidgetSetup(idx_field).type()
+        if not idx_field >= 0:
+            print ("Field {0} not found in the layer properties. QgsFilterLineEdit() was set instead settings value.".format(field_name))
+            return QgsFilterLineEdit(content)
 
         if field_type == 'ValueMap':
             comboBox = QtWidgets.QComboBox(content)
@@ -455,7 +565,8 @@ class DataSearcher:
             return checkBox
         elif field_type == 'Range':
             config = layer.editorWidgetSetup(idx_field).config()
-            lineEdit = QtWidgets.QLineEdit(content)
+            # lineEdit = QtWidgets.QLineEdit(content)
+            lineEdit = QgsFilterLineEdit(content)
             if type(config["Step"]) == int:
                 lineEdit.setValidator(QIntValidator(config["Min"], config["Max"], None))
             else:
@@ -468,7 +579,8 @@ class DataSearcher:
             dateTimeEdit.clear()
             return dateTimeEdit
         elif field_type == 'TextEdit':
-            lineEdit = QtWidgets.QLineEdit(content)
+            # lineEdit = QtWidgets.QLineEdit(content)
+            lineEdit = QgsFilterLineEdit(content)
             return lineEdit
         return None
 
@@ -495,6 +607,11 @@ class DataSearcher:
         if curlayer is not None:
             if curlayer.name() in available_layers:
                 self.dockwidget.combo_layers.setCurrentText(curlayer.name())
+
+        self.layer = self.dockwidget.combo_layers.currentLayer()
+        if self.layer:
+            self.connInfo = QgsDataSourceUri(self.layer.dataProvider().dataSourceUri(expandAuthConfig=True))
+
         self.populateFilterFields()
 
         self.dockwidget.combo_layers.currentIndexChanged.connect(self.comboLayersChanged)
@@ -504,17 +621,15 @@ class DataSearcher:
         self.dockwidget.tableResult.setRowCount(0)
         self.dockwidget.tableResult.sortItems(-1)
 
-        layer = self.dockwidget.combo_layers.currentLayer()
-        connInfo = QgsDataSourceUri(layer.dataProvider().dataSourceUri(expandAuthConfig=True))
-        pwd = connInfo.password()
-        username = connInfo.username()
-        wkbtype = connInfo.wkbType()
-        table = connInfo.table()
-        schema = connInfo.schema()
-        server_ip = connInfo.host()
-        database = connInfo.database()
-        port = connInfo.port()
-        geom = connInfo.geometryColumn()
+        # pwd = self.connInfo.password()
+        # username = self.connInfo.username()
+        # wkbtype = self.connInfo.wkbType()
+        # table = self.connInfo.table()
+        # schema = self.connInfo.schema()
+        # server_ip = self.connInfo.host()
+        # database = self.connInfo.database()
+        # port = self.connInfo.port()
+        # geom = self.connInfo.geometryColumn()
 
         #print(connInfo, pwd, username, wkbtype, table, schema, server_ip, database, port, geom)
 
@@ -526,11 +641,11 @@ class DataSearcher:
         print(attributes_values)
         # return
 
-        if len(query) > 0 and pwd and username:
+        if len(query) > 0:
             try:
                 conn = psycopg2.connect(
-                    "dbname='" + database + "' host='" + server_ip + 
-                    "' user='" + username + "' password='" + pwd + "'")
+                    "dbname='" +  self.connInfo.database() + "' host='" +  self.connInfo.host() + 
+                    "' user='" +  self.connInfo.username() + "' password='" +  self.connInfo.password() + "'")
                 cursor = conn.cursor(cursor_factory=RealDictCursor)
 
                 mogrified_query = cursor.mogrify(query, attributes_values)
@@ -561,19 +676,19 @@ class DataSearcher:
             if not field == "_":
                 isrange = fields[field].get("isrange", False) == 'True'
                 if isrange:
-                    value_from = self.findFieldWidgetByName(self.dockwidget.fieldsLayout, field + "_from")
+                    value_from = self.getFieldValue(self.dockwidget.fieldsLayout, field + "_from")
                     values_dict[field + "_from"] = value_from
-                    value_to = self.findFieldWidgetByName(self.dockwidget.fieldsLayout, field + "_to")
+                    value_to = self.getFieldValue(self.dockwidget.fieldsLayout, field + "_to")
                     values_dict[field + "_to"] = value_to
                 else:
-                    value = self.findFieldWidgetByName(self.dockwidget.fieldsLayout, field)
+                    value = self.getFieldValue(self.dockwidget.fieldsLayout, field)
                     values_dict[field] = value
         return values_dict
 
-    def findFieldWidgetByName(self, layout, widget_name):
+    def getFieldValue(self, layout, widget_name):
         for i in reversed(range(layout.count())): 
             if layout.itemAt(i).layout():
-                widget = self.findFieldWidgetByName(layout.itemAt(i).layout(), widget_name)
+                widget = self.getFieldValue(layout.itemAt(i).layout(), widget_name)
                 if widget: 
                     return widget
             elif layout.itemAt(i).widget():
@@ -582,6 +697,10 @@ class DataSearcher:
                     if widget.metaObject().className() == 'QLineEdit':
                         print('QLineEdit: ', widget_name)
                         value = widget.text().strip().lower()
+                        return value if len(value) > 0 else None
+                    if widget.metaObject().className() == 'QgsFilterLineEdit':
+                        print('QLineEdit: ', widget_name)
+                        value = widget.value().strip().lower()
                         return value if len(value) > 0 else None
                     elif widget.metaObject().className() == 'QCheckBox':
                         print('QCheckBox: ', widget_name)
@@ -599,3 +718,24 @@ class DataSearcher:
                             value = datetime.strptime(value_str, '%d.%m.%Y')
                         return value
         return None
+
+    def execReset(self):
+        self.clearWidgetsValues(self.dockwidget.fieldsLayout)
+
+    def clearWidgetsValues(self, layout):
+        for i in reversed(range(layout.count())): 
+            if layout.itemAt(i).layout():
+                self.clearWidgetsValues(layout.itemAt(i).layout())
+            elif layout.itemAt(i).widget():
+                widget = layout.itemAt(i).widget()
+                if widget.metaObject().className() != 'QLabel':
+                    try:
+                        widget.setCurrentIndex(-1)
+                    except:
+                        try:
+                            widget.setChecked(False)
+                        except:
+                            try:
+                                widget.clear()
+                            except Exception as e:
+                                print(e)

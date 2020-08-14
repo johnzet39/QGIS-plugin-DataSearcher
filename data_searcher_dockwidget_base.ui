@@ -25,6 +25,26 @@
         <widget class="QgsMapLayerComboBox" name="combo_layers"/>
        </item>
        <item>
+        <widget class="QPushButton" name="buttonReset">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="toolTip">
+          <string>Очистить форму</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="icon">
+          <iconset resource="resources.qrc">
+           <normaloff>:/plugins/_Data_searcher/icons/reset_32.png</normaloff>:/plugins/_Data_searcher/icons/reset_32.png</iconset>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QPushButton" name="buttonSearch">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Maximum" vsizetype="Fixed">

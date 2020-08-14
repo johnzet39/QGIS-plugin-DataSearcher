@@ -8,7 +8,8 @@
                 },
                 "kind_id": {
                     "label": "Вид",
-                    "source_type": "own"
+                    "source_type": "own",
+                    "col_span": 3
                 },
                 "_": {
                 },
@@ -16,8 +17,24 @@
                     "label": "Нелегальная",
                     "source_type": "own"
                 },
-                "field4": {
-                    "label": "поле4"
+                "owner_id": {
+                    "label": "Владелец",
+                    "source_type": "own",
+                    "col_span": 2
+                },
+                "manufacturer_id": {
+                    "label": "Изготовитель",
+                    "source_type": "other",
+                    "source_field": "owner_id",
+                    "minmax_size": [100, 3000]
+                },
+                "land_owner_id": {
+                    "label": "Собственник",
+                    "source_type": "postgres",
+                    "query_data": "select id, owner from schema_reklama.v_spr_persons_firms order by owner",
+                    "field_key": "id",
+                    "field_title": "owner",
+                    "minmax_size": [100, 3000]
                 },
                 "field5": {
                     "label": "поле5",
