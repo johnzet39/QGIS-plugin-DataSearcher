@@ -1,0 +1,19 @@
+Layers:
+    "layer name" OR "_":
+        columns_count,
+        columnid_name,
+        query,
+        fields:
+            "field name":
+                label,
+                source_type {own, other, layer, postgres, same, custom},
+                col_span,
+                source_field (same)
+                minmax_size
+                query_data (postgres)
+                field_key (postgres, layer)
+                field_title (postgres, layer)
+                layer_name (layer)
+                isrange,
+                field_type (custom) {datetime, checkbox, rangeint, rangefloat, combobox}
+                combobox_values (custom (combobox))

@@ -1,127 +1,92 @@
 {
     "Layers": {
-        "geo_ad_constructions": {
-            "columns_count": 4,
+        "Рекламные конструкции": {
+            "columns_count": 3,
             "columnid_name": "gid",
             "fields" : {
-                "gid": {
-                    "label": "гид"
-                },
-                "kind_id": {
-                    "label": "Вид",
-                    "source_type": "own",
-                    "col_span": 3
-                },
-                "_": {
-                },
-                "illegal": {
-                    "label": "Нелегальная",
-                    "source_type": "own"
-                },
-                "owner_id": {
-                    "label": "Владелец",
-                    "source_type": "other",
-                    "col_span": 2
-                },
-                "manufacturer_id": {
-                    "label": "Изготовитель",
-                    "source_type": "other",
-                    "source_field": "owner_id",
-                    "minmax_size": [100, 3000]
-                },
                 "land_owner_id": {
                     "label": "Собственник",
-                    "source_type1": "postgres",
+                    "source_type": "postgres",
                     "query_data": "select id, owner from schema_reklama.v_spr_persons_firms order by owner",
                     "field_key": "id",
                     "field_title": "owner",
                     "minmax_size": [100, 3000]
                 },
-                "field5": {
-                    "label": "поле5",
-                    "source_type": "layer",
-                    "layer_name": "ad_acts",
-                    "field_key": "id",
-                    "field_title": "reg_number"
-                },
-                "address_id": {
-                    "label": "Адрес",
+                "kind_id": {
+                    "label": "Вид",
                     "source_type": "own",
-                    "isrange": "False"
-                },
+                    "col_span": 1
+                },               
                 "street_id": {
                     "label": "Улица",
                     "source_type": "own"
-                },
-                "archive_date": {
-                    "label": "Дата",
-                    "source_type": "own",
-                    "isrange": "True"
-                },
-                "address": {
-                    "label": "Адрес текст",
-                    "source_type": "own"
-                },
-                "perm_date": {
-                    "label": "Период действия",
-                    "source_type": "custom",
-                    "field_type": "DateTime",
-                    "isrange": "True"
-                },
-                "test_checkbox": {
-                    "label": "test_checkbox",
-                    "source_type": "custom",
-                    "field_type": "Checkbox"
                 },
                 "perm_code": {
                     "label": "Номер разрешения",
                     "source_type": "custom",
                     "field_type": "RangeInt"
                 },
-                "test_empty": {
-                    "label": "test_empty",
-                    "source_type": "custom"
+                "perm_date": {
+                    "label": "Пер.дейст.разр.",
+                    "source_type": "custom",
+                    "field_type": "DateTime",
+                    "isrange": "True"
                 },
-                "test_rangeint": {
-                    "label": "test_rangeint",
+                "contr_code": {
+                    "label": "Номер договора",
                     "source_type": "custom",
                     "field_type": "RangeInt"
                 },
-                "test_combobox": {
-                    "label": "combobox",
+                "contr_date": {
+                    "label": "Пер.дейст.дог.",
+                    "source_type": "custom",
+                    "field_type": "DateTime",
+                    "isrange": "True"
+                },
+                "gid": {
+                    "label": "гид",
+                    "source_type": "own",
+                    "col_span": 1
+                },
+                "archive": {
+                    "label": "Актуальность",
                     "source_type": "custom",
                     "field_type": "ComboBox",
                     "combobox_values": {
-                        "": "",
-                        "1": "value1",
-                        "2": "value2"
+                        "": "Все",
+                        "-1": "Архивные",
+                        "0": "Действующие"
                     }
-                },
-                "test_rangefloat": {
-                    "label": "test_rangefloat",
-                    "source_type": "custom",
-                    "field_type": "RangeFloat"
                 }
+                
             },
             "query": [
-                "select g.gid, g.kind_id as \"Вид\", g.address, g.archive_date, p.code as \"Номер разрешения\" ", 
-                "",
-                " from schema_reklama.geo_ad_constructions g ",
-                " LEFT JOIN schema_reklama.ad_permissions p ON p.construction_id = g.id",
+                "select ",
+                " g.gid, k.title as \"Вид\", ",
+                " p.code as \"Номер разрешения\", p.start_date as \"Дата разр.\", p.end_date as \"Конец разр.\", ", 
+                " cntr.code as \"Номер договора\", cntr.start_date as \"Дата дог.\", cntr.end_date as \"Конец дог.\", ", 
+                " case when g.archive = -1 then 'АРХИВ' end as \"Архивная\", ",
+                " loi.owner as Собственник ",
+                " ",
+                " FROM schema_reklama.geo_ad_constructions g ",
+                " LEFT JOIN schema_reklama.ad_permissions p ON p.construction_id = g.gid ",
+                " LEFT JOIN schema_reklama.ad_contracts cntr ON cntr.construction_id = g.gid ",
+                " LEFT JOIN schema_reklama.spr_ad_kind k ON k.id = g.kind_id ",
+                " LEFT JOIN schema_reklama.v_spr_persons_firms loi ON loi.id = g.land_owner_id ",
                 " WHERE ",
-                "     (%(gid)s is null OR g.gid = %(gid)s) ",
-                " AND (%(illegal)s is null OR g.illegal = %(illegal)s)",
-                " AND (%(address)s is null OR g.address like %(address)s) ",
-                " AND (%(archive_date_from)s is null OR g.archive_date >= %(archive_date_from)s) ",
-                " AND (%(archive_date_to)s is null OR g.archive_date < %(archive_date_to)s) ",
-                " AND (%(perm_code)s is null OR p.code = %(perm_code)s)",
-                " limit 10 "
+                " (%(gid)s is null OR g.gid = %(gid)s) ",
+                " AND (%(land_owner_id)s is null OR loi.id = %(land_owner_id)s) ",
+                " AND (%(kind_id)s is null OR k.id = %(kind_id)s) ",
+                " AND (%(perm_code)s is null OR p.code = %(perm_code)s) ",
+                " AND (%(perm_date_from)s is null OR p.start_date >= %(perm_date_from)s) ",
+                " AND (%(perm_date_to)s is null OR p.end_date < %(perm_date_to)s) ",
+                " AND (%(archive)s is null OR g.archive = %(archive)s) "
             ]
             
         },
         "spr_ad_kind": {
             "columns_count": 3,
-            "columnid_name": "gid",
+            "columnid_name": "id",
             "fields" : {
                 "id": {
                     "label": "id",
@@ -132,7 +97,11 @@
                     "source_type": "own"
                 }
             },
-            "query": "select id, title from schema_reklama.spr_ad_kind"
+            "query": [
+                "select k.id, k.title from schema_reklama.spr_ad_kind k",
+                " WHERE (%(id)s is null OR k.id = %(id)s) ", 
+                " AND (%(title)s is null OR lower(k.title) ilike %(title)s) "
+            ]
             
         }
     }

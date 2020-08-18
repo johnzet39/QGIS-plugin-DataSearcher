@@ -25,7 +25,7 @@ from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt, QVari
 from qgis.PyQt.QtGui import QIcon, QIntValidator, QDoubleValidator
 from qgis.PyQt.QtWidgets import QAction, QTableWidgetItem
 from qgis.PyQt import QtGui, QtWidgets, uic
-from qgis.core import QgsProject, QgsVectorLayer, QgsRelation, QgsDataSourceUri
+from qgis.core import QgsProject, QgsVectorLayer, QgsRelation, QgsDataSourceUri, QgsWkbTypes 
 from qgsdatetimeedit import QgsDateTimeEdit
 from qgsfilterlineedit import QgsFilterLineEdit
 # Initialize Qt resources from file resources.py
@@ -243,6 +243,7 @@ class DataSearcher:
 
             self.loadLayersData()
             self.populateComboLayers()
+            self.setRowSelectedButtonsStatus()
 
             self.iface.addDockWidget(Qt.BottomDockWidgetArea, self.dockwidget)
             self.dockwidget.show()
@@ -252,15 +253,21 @@ class DataSearcher:
     def connectActions(self):
         self.dockwidget.buttonSearch.clicked.connect(self.execSearch)
         self.dockwidget.buttonReset.clicked.connect(self.execReset)
+        self.dockwidget.buttonCenter.clicked.connect(self.centerToSelect)
+        self.dockwidget.buttonZoom.clicked.connect(self.zoomToSelect)
         self.dockwidget.tableResult.itemDoubleClicked.connect(self.execDoubleClickedTable)
+        self.dockwidget.tableResult.itemSelectionChanged.connect(self.setRowSelectedButtonsStatus)
         # self.dockwidget.combo_layers.currentIndexChanged.connect(self.comboLayersChanged) #move to populateComboLayers
         print("connect")
 
     def disconnectActions(self):
         self.dockwidget.buttonSearch.clicked.disconnect(self.execSearch)
         self.dockwidget.buttonReset.clicked.disconnect(self.execReset)
+        self.dockwidget.buttonCenter.clicked.disconnect(self.centerToSelect)
+        self.dockwidget.buttonZoom.clicked.disconnect(self.zoomToSelect)
         self.dockwidget.combo_layers.currentIndexChanged.disconnect(self.comboLayersChanged)
         self.dockwidget.tableResult.itemDoubleClicked.disconnect(self.execDoubleClickedTable)
+        self.dockwidget.tableResult.itemSelectionChanged.disconnect(self.setRowSelectedButtonsStatus)
         print('disconnect')
 
     def loadLayersData(self):
@@ -443,7 +450,8 @@ class DataSearcher:
                     "dbname='" + self.connInfo.database() + 
                     "' host='" + self.connInfo.host() + 
                     "' user='" + self.connInfo.username() + 
-                    "' password='" + self.connInfo.password() + "'")
+                    "' password='" + self.connInfo.password() + 
+                    "' port='" + self.connInfo.port() + "'")
                 cursor = conn.cursor(cursor_factory=RealDictCursor)
 
                 cursor.execute(query_data)
@@ -632,56 +640,57 @@ class DataSearcher:
         # port = self.connInfo.port()
         # geom = self.connInfo.geometryColumn()
 
-        #print(connInfo, pwd, username, wkbtype, table, schema, server_ip, database, port, geom)
-
         sellayer = self.dockwidget.combo_layers.currentText()
-        fields = self.settings["Layers"][sellayer]["fields"]
-        self.columnid_name = self.settings["Layers"][sellayer]["columnid_name"]
-        query = "".join(self.settings["Layers"][sellayer]["query"])
+        if self.layer:
+            fields = self.settings["Layers"][sellayer]["fields"]
+            self.columnid_name = self.settings["Layers"][sellayer]["columnid_name"]
+            query = "".join(self.settings["Layers"][sellayer]["query"])
 
-        attributes_values = self.generateQueryAttributesValues(fields)
-        print(attributes_values)
-        # return
+            attributes_values = self.generateQueryAttributesValues(fields)
+            #print(attributes_values)
+            # return
 
-        if len(query) > 0:
-            try:
-                conn = psycopg2.connect(
-                    "dbname='" +  self.connInfo.database() + "' host='" +  self.connInfo.host() + 
-                    "' user='" +  self.connInfo.username() + "' password='" +  self.connInfo.password() + "'")
-                cursor = conn.cursor(cursor_factory=RealDictCursor)
+            if len(query) > 0:
+                try:
+                    conn = psycopg2.connect(
+                        "dbname='" + self.connInfo.database() + "' host='" + self.connInfo.host() + 
+                        "' user='" + self.connInfo.username() + "' password='" + self.connInfo.password() + 
+                        "' port='" + self.connInfo.port() + "'")
+                    cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-                mogrified_query = cursor.mogrify(query, attributes_values)
-                # print(mogrified_query)
-                cursor.execute(mogrified_query)
-                results = cursor.fetchall()
-                # print(results)
+                    mogrified_query = cursor.mogrify(query, attributes_values)
+                    #print(mogrified_query)
+                    cursor.execute(mogrified_query)
+                    results = cursor.fetchall()
+                    #print(results)
 
-                headers = list(results[0].keys())
-                headers.insert(0, headers.pop(headers.index(self.columnid_name)))
+                    cnt_rows = len(results)
+                    self.iface.mainWindow().statusBar().showMessage(u'Всего найдено: ' + str(cnt_rows))
 
-                cnt_rows = len(results)
-                cnt_cols = len(headers)
+                    if cnt_rows > 0:
+                        headers = list(results[0].keys())
+                        headers.insert(0, headers.pop(headers.index(self.columnid_name)))
+                        cnt_cols = len(headers)
 
-                table = self.dockwidget.tableResult
-                table.setRowCount(cnt_rows)
-                table.setColumnCount(cnt_cols)
-                table.setHorizontalHeaderLabels(headers)
-                # table.setColumnHidden(0, True)
-                for rn in range(0, cnt_rows):
-                    for cn in range(0, cnt_cols-1):
-                        item = QTableWidgetItem(str(results[rn][headers[cn]]))
-                        table.setItem(rn, cn, item)
-                # table.horizontalHeaderItem(0).setToolTip("Column 1 ")
-                table.resizeColumnsToContents()
-                self.iface.mainWindow().statusBar().showMessage(u'Всего найдено: ' + str(cnt_rows))
+                        table = self.dockwidget.tableResult
+                        table.setRowCount(cnt_rows)
+                        table.setColumnCount(cnt_cols)
+                        table.setHorizontalHeaderLabels(headers)
+                        table.setColumnHidden(0, True)
+                        for rn in range(0, cnt_rows):
+                            for cn in range(0, cnt_cols):
+                                cell_result = results[rn][headers[cn]]
+                                if cell_result:
+                                    item = QTableWidgetItem(str(cell_result))
+                                    table.setItem(rn, cn, item)
+                        # table.horizontalHeaderItem(0).setToolTip("Column 1 ")
+                        table.resizeColumnsToContents()
 
-            except Exception as e:
-                print(e)
-            finally:
-                cursor.close()
-                conn.close()
-
-        # self.iface.messageBar().pushMessage(u"asdasd", u"sadasd", duration=2, level=2)
+                except Exception as e:
+                    print(e)
+                finally:
+                    cursor.close()
+                    conn.close()
 
     def generateQueryAttributesValues(self, fields):
         values_dict = {}
@@ -709,11 +718,15 @@ class DataSearcher:
                 if widget.objectName() == widget_name:
                     if widget.metaObject().className() == 'QLineEdit':
                         # print('QLineEdit: ', widget_name)
-                        value = widget.text().strip().lower()
+                        value = widget.text().strip()
+                        if not widget.validator() and len(value) > 0:
+                            value = "%{}%".format(value)
                         return value if len(value) > 0 else None
                     if widget.metaObject().className() == 'QgsFilterLineEdit':
                         # print('QLineEdit: ', widget_name)
-                        value = widget.value().strip().lower()
+                        value = widget.value().strip()
+                        if not widget.validator() and len(value) > 0:
+                            value = "%{}%".format(value)
                         return value if len(value) > 0 else None
                     elif widget.metaObject().className() == 'QCheckBox':
                         # print('QCheckBox: ', widget_name)
@@ -755,16 +768,54 @@ class DataSearcher:
 
     def execDoubleClickedTable(self, item):
         row = item.row()
-        for feature in self.layer.getFeatures(
-                "{0} = {1}".format(
-                    self.columnid_name,
-                    self.dockwidget.tableResult.item(row, 0).text())
-        ):
+        table = self.dockwidget.tableResult
+        featuresById = self.layer.getFeatures("{0} = {1}".format(
+                                                self.columnid_name,
+                                                table.item(row, 0).text()))
+        for feature in featuresById:
             self.iface.openFeatureForm(self.layer, feature, False, False)
+
+    def centerToSelect(self):
+        table = self.dockwidget.tableResult
+        row = table.currentRow()
+        featuresById = self.layer.getFeatures("{0} = {1}".format(
+                                                self.columnid_name,
+                                                table.item(row, 0).text()))
+        for feature in featuresById:
             self.layer.select(feature.id())
             self.iface.mapCanvas().setCenter(feature.geometry().boundingBox().center())
             self.iface.mapCanvas().refresh()
-        
+            break
+        del featuresById
+
+    def zoomToSelect(self):
+
+        table = self.dockwidget.tableResult
+        row = table.currentRow()
+        featuresById = self.layer.getFeatures("{0} = {1}".format(
+                                                self.columnid_name,
+                                                table.item(row, 0).text()))
+        for feature in featuresById:
+            self.layer.select(feature.id())
+
+            box = None
+            if self.layer.geometryType() == QgsWkbTypes.PointGeometry:
+                box = feature.geometry().buffer(50, 1).boundingBox()
+            else: # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!does not tested
+                box = feature.geometry().boundingBox()
+                box = box.grow(box.heigth * 0.2)
+            self.iface.mapCanvas().setExtent(box)
+            self.iface.mapCanvas().refresh()
+            break
+        del featuresById
+
+    def setRowSelectedButtonsStatus(self):
+        if self.dockwidget.tableResult.currentRow() >= 0:
+            self.dockwidget.buttonCenter.setEnabled(True)
+            self.dockwidget.buttonZoom.setEnabled(True)
+        else:
+            self.dockwidget.buttonCenter.setEnabled(False)
+            self.dockwidget.buttonZoom.setEnabled(False)
 
         
 
