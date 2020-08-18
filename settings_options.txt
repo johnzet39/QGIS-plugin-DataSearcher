@@ -1,7 +1,7 @@
 Layers:
     "layer name" OR "_":
         columns_count,
-        columnid_name,
+        column_key,
         query,
         fields:
             "field name":

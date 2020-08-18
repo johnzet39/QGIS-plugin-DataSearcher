@@ -85,7 +85,7 @@ class DataSearcher:
         self.settings = None
         self.layer = None
         self.connInfo = None
-        self.columnid_name = None
+        self.column_key = None
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -223,6 +223,7 @@ class DataSearcher:
     def run(self):
         """Run method that loads and starts the plugin"""
         print("run start: ", datetime.now().strftime("%H:%M:%S.%f")[:-3])
+        print(self.dockwidget, self.pluginIsActive)
         if not self.pluginIsActive:
             self.pluginIsActive = True
 
@@ -251,20 +252,26 @@ class DataSearcher:
         print("run end: ", datetime.now().strftime("%H:%M:%S.%f")[:-3])
 
     def connectActions(self):
+        QgsProject.instance().cleared.connect(self.closePanel)
         self.dockwidget.buttonSearch.clicked.connect(self.execSearch)
         self.dockwidget.buttonReset.clicked.connect(self.execReset)
         self.dockwidget.buttonCenter.clicked.connect(self.centerToSelect)
         self.dockwidget.buttonZoom.clicked.connect(self.zoomToSelect)
+        self.dockwidget.buttonFilterMap.clicked.connect(self.filterMapBySelect)
+        self.dockwidget.buttonClearFilterMap.clicked.connect(self.clearFilterMapBySelect)
         self.dockwidget.tableResult.itemDoubleClicked.connect(self.execDoubleClickedTable)
         self.dockwidget.tableResult.itemSelectionChanged.connect(self.setRowSelectedButtonsStatus)
         # self.dockwidget.combo_layers.currentIndexChanged.connect(self.comboLayersChanged) #move to populateComboLayers
         print("connect")
 
     def disconnectActions(self):
+        QgsProject.instance().cleared.disconnect(self.closePanel)
         self.dockwidget.buttonSearch.clicked.disconnect(self.execSearch)
         self.dockwidget.buttonReset.clicked.disconnect(self.execReset)
         self.dockwidget.buttonCenter.clicked.disconnect(self.centerToSelect)
         self.dockwidget.buttonZoom.clicked.disconnect(self.zoomToSelect)
+        self.dockwidget.buttonFilterMap.clicked.disconnect(self.filterMapBySelect)
+        self.dockwidget.buttonClearFilterMap.clicked.disconnect(self.clearFilterMapBySelect)
         self.dockwidget.combo_layers.currentIndexChanged.disconnect(self.comboLayersChanged)
         self.dockwidget.tableResult.itemDoubleClicked.disconnect(self.execDoubleClickedTable)
         self.dockwidget.tableResult.itemSelectionChanged.disconnect(self.setRowSelectedButtonsStatus)
@@ -643,7 +650,7 @@ class DataSearcher:
         sellayer = self.dockwidget.combo_layers.currentText()
         if self.layer:
             fields = self.settings["Layers"][sellayer]["fields"]
-            self.columnid_name = self.settings["Layers"][sellayer]["columnid_name"]
+            self.column_key = self.settings["Layers"][sellayer]["column_key"]
             query = "".join(self.settings["Layers"][sellayer]["query"])
 
             attributes_values = self.generateQueryAttributesValues(fields)
@@ -669,7 +676,7 @@ class DataSearcher:
 
                     if cnt_rows > 0:
                         headers = list(results[0].keys())
-                        headers.insert(0, headers.pop(headers.index(self.columnid_name)))
+                        headers.insert(0, headers.pop(headers.index(self.column_key)))
                         cnt_cols = len(headers)
 
                         table = self.dockwidget.tableResult
@@ -770,7 +777,7 @@ class DataSearcher:
         row = item.row()
         table = self.dockwidget.tableResult
         featuresById = self.layer.getFeatures("{0} = {1}".format(
-                                                self.columnid_name,
+                                                self.column_key,
                                                 table.item(row, 0).text()))
         for feature in featuresById:
             self.iface.openFeatureForm(self.layer, feature, False, False)
@@ -779,8 +786,9 @@ class DataSearcher:
         table = self.dockwidget.tableResult
         row = table.currentRow()
         featuresById = self.layer.getFeatures("{0} = {1}".format(
-                                                self.columnid_name,
+                                                self.column_key,
                                                 table.item(row, 0).text()))
+        self.layer.selectByIds([])
         for feature in featuresById:
             self.layer.select(feature.id())
             self.iface.mapCanvas().setCenter(feature.geometry().boundingBox().center())
@@ -793,8 +801,9 @@ class DataSearcher:
         table = self.dockwidget.tableResult
         row = table.currentRow()
         featuresById = self.layer.getFeatures("{0} = {1}".format(
-                                                self.columnid_name,
+                                                self.column_key,
                                                 table.item(row, 0).text()))
+        self.layer.selectByIds([])
         for feature in featuresById:
             self.layer.select(feature.id())
 
@@ -809,14 +818,30 @@ class DataSearcher:
             break
         del featuresById
 
+    def filterMapBySelect(self):
+        table = self.dockwidget.tableResult
+        selectedIds = []
+        selectionModel = table.selectionModel()
+        for modelIndex in selectionModel.selectedRows():
+            selectedIds.append(table.item(modelIndex.row(), 0).text())
+        if len(selectedIds) > 0:
+            self.layer.setSubsetString('"{0}" in ({1})'.format(self.column_key, 
+                                                               ', '.join(selectedIds)))
+
+    def clearFilterMapBySelect(self):
+        self.layer.setSubsetString('')
+
     def setRowSelectedButtonsStatus(self):
         if self.dockwidget.tableResult.currentRow() >= 0:
             self.dockwidget.buttonCenter.setEnabled(True)
             self.dockwidget.buttonZoom.setEnabled(True)
+            self.dockwidget.buttonFilterMap.setEnabled(True)
         else:
             self.dockwidget.buttonCenter.setEnabled(False)
             self.dockwidget.buttonZoom.setEnabled(False)
+            self.dockwidget.buttonFilterMap.setEnabled(False)
 
-        
-
-
+    def closePanel(self):
+        self.iface.removeDockWidget(self.dockwidget)
+        self.pluginIsActive = False
+        print('Closed')

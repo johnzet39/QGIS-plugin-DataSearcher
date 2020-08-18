@@ -2,7 +2,7 @@
     "Layers": {
         "Рекламные конструкции": {
             "columns_count": 3,
-            "columnid_name": "gid",
+            "column_key": "gid",
             "fields" : {
                 "land_owner_id": {
                     "label": "Собственник",
@@ -57,36 +57,58 @@
                         "-1": "Архивные",
                         "0": "Действующие"
                     }
+                },
+                "issued": {
+                    "label": "Паспорт выдан",
+                    "source_type": "custom",
+                    "field_type": "ComboBox",
+                    "combobox_values": {
+                        "": "Все",
+                        "-1": "Выдан",
+                        "0": "Не выдан"
+                    }
+                },
+                "zone_id": {
+                    "label": "Номер зоны",
+                    "source_type": "layer",
+                    "layer_name": "spr_zones",
+                    "field_key": "id",
+                    "field_title": "zonename"
                 }
                 
             },
             "query": [
                 "select ",
-                " g.gid, k.title as \"Вид\", ",
-                " p.code as \"Номер разрешения\", p.start_date as \"Дата разр.\", p.end_date as \"Конец разр.\", ", 
+                " g.gid, k.title as \"Вид\", g.street_id, ",
+                " p.code as \"Номер разрешения\", p.start_date as \"Дата разр.\", p.end_date as \"Конец разр.\", p.issued as \"Выдан\", ", 
                 " cntr.code as \"Номер договора\", cntr.start_date as \"Дата дог.\", cntr.end_date as \"Конец дог.\", ", 
                 " case when g.archive = -1 then 'АРХИВ' end as \"Архивная\", ",
-                " loi.owner as Собственник ",
+                " loi.owner as \"Собственник\", ",
+                " z.zonename as \"Номер зоны\" ",
                 " ",
                 " FROM schema_reklama.geo_ad_constructions g ",
                 " LEFT JOIN schema_reklama.ad_permissions p ON p.construction_id = g.gid ",
                 " LEFT JOIN schema_reklama.ad_contracts cntr ON cntr.construction_id = g.gid ",
                 " LEFT JOIN schema_reklama.spr_ad_kind k ON k.id = g.kind_id ",
                 " LEFT JOIN schema_reklama.v_spr_persons_firms loi ON loi.id = g.land_owner_id ",
+                " LEFT JOIN schema_reklama.ad_zones_streets zs ON g.street_id = zs.street_sys ",
+                " LEFT JOIN schema_reklama.spr_zones z ON z.id = zs.zone_id ",
                 " WHERE ",
                 " (%(gid)s is null OR g.gid = %(gid)s) ",
                 " AND (%(land_owner_id)s is null OR loi.id = %(land_owner_id)s) ",
                 " AND (%(kind_id)s is null OR k.id = %(kind_id)s) ",
                 " AND (%(perm_code)s is null OR p.code = %(perm_code)s) ",
+                " AND (%(issued)s is null OR p.issued = %(issued)s) ",
                 " AND (%(perm_date_from)s is null OR p.start_date >= %(perm_date_from)s) ",
                 " AND (%(perm_date_to)s is null OR p.end_date < %(perm_date_to)s) ",
-                " AND (%(archive)s is null OR g.archive = %(archive)s) "
+                " AND (%(archive)s is null OR g.archive = %(archive)s) ",
+                " AND (%(zone_id)s is null OR z.id = %(zone_id)s) "
             ]
             
         },
         "spr_ad_kind": {
             "columns_count": 3,
-            "columnid_name": "id",
+            "column_key": "id",
             "fields" : {
                 "id": {
                     "label": "id",
