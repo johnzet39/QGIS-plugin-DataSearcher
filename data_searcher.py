@@ -237,14 +237,17 @@ class DataSearcher:
                 self.dockwidget = DataSearcherDockWidget()
                 # self.fieldsLayout = self.dockwidget.fieldsLayout
                 self.fieldsLayout = self.dockwidget.fieldsGroupBox.layout().itemAt(0)
+
+                self.loadLayersData()
+                self.populateComboLayers()
+                self.setRowSelectedButtonsStatus()
+
             self.connectActions()
 
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
 
-            self.loadLayersData()
-            self.populateComboLayers()
-            self.setRowSelectedButtonsStatus()
+            
 
             self.iface.addDockWidget(Qt.BottomDockWidgetArea, self.dockwidget)
             self.dockwidget.show()
@@ -252,7 +255,7 @@ class DataSearcher:
         print("run end: ", datetime.now().strftime("%H:%M:%S.%f")[:-3])
 
     def connectActions(self):
-        QgsProject.instance().cleared.connect(self.closePanel)
+        # QgsProject.instance().cleared.connect(self.closePanel)
         self.dockwidget.buttonSearch.clicked.connect(self.execSearch)
         self.dockwidget.buttonReset.clicked.connect(self.execReset)
         self.dockwidget.buttonCenter.clicked.connect(self.centerToSelect)
@@ -265,7 +268,7 @@ class DataSearcher:
         print("connect")
 
     def disconnectActions(self):
-        QgsProject.instance().cleared.disconnect(self.closePanel)
+        # QgsProject.instance().cleared.disconnect(self.closePanel)
         self.dockwidget.buttonSearch.clicked.disconnect(self.execSearch)
         self.dockwidget.buttonReset.clicked.disconnect(self.execReset)
         self.dockwidget.buttonCenter.clicked.disconnect(self.centerToSelect)
@@ -292,6 +295,28 @@ class DataSearcher:
         if self.layer:
             self.connInfo = QgsDataSourceUri(self.layer.dataProvider().dataSourceUri(expandAuthConfig=True))
         self.populateFilterFields()
+
+    def populateComboLayers(self):
+        available_layers = self.settings["Layers"].keys()
+        layer_list = []
+        for layer in QgsProject.instance().mapLayers().values():
+            if layer.name() not in available_layers:
+                layer_list.append(layer)
+        self.dockwidget.combo_layers.setExceptedLayerList(layer_list)
+
+        curlayer = self.iface.activeLayer()
+        if curlayer is not None:
+            if curlayer.name() in available_layers:
+                self.dockwidget.combo_layers.setCurrentText(curlayer.name())
+
+        self.layer = self.dockwidget.combo_layers.currentLayer()
+        if self.layer:
+            self.connInfo = QgsDataSourceUri(self.layer.dataProvider().dataSourceUri(expandAuthConfig=True))
+
+        self.populateFilterFields()
+
+        self.dockwidget.combo_layers.currentIndexChanged.connect(self.comboLayersChanged)
+        # print('populated')
 
     def populateFilterFields(self):
         self.clearFieldsLayout(self.fieldsLayout)
@@ -610,28 +635,6 @@ class DataSearcher:
             elif layout.itemAt(i).widget():
                 layout.itemAt(i).widget().setParent(None)  
         # print('count after: ', layout.count(), 'total: ',  self.fieldsLayout.count())
-
-    def populateComboLayers(self):
-        available_layers = self.settings["Layers"].keys()
-        layer_list = []
-        for layer in QgsProject.instance().mapLayers().values():
-            if layer.name() not in available_layers:
-                layer_list.append(layer)
-        self.dockwidget.combo_layers.setExceptedLayerList(layer_list)
-
-        curlayer = self.iface.activeLayer()
-        if curlayer is not None:
-            if curlayer.name() in available_layers:
-                self.dockwidget.combo_layers.setCurrentText(curlayer.name())
-
-        self.layer = self.dockwidget.combo_layers.currentLayer()
-        if self.layer:
-            self.connInfo = QgsDataSourceUri(self.layer.dataProvider().dataSourceUri(expandAuthConfig=True))
-
-        self.populateFilterFields()
-
-        self.dockwidget.combo_layers.currentIndexChanged.connect(self.comboLayersChanged)
-        # print('populated')
 
     def execSearch(self):
         self.dockwidget.tableResult.setRowCount(0)

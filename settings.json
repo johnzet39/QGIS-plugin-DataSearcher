@@ -16,7 +16,12 @@
                     "label": "Вид",
                     "source_type": "own",
                     "col_span": 1
-                },               
+                },  
+                "isschema": {
+                    "label": "В схеме",
+                    "source_type": "custom",
+                    "field_type": "CheckBox"
+                },             
                 "street_id": {
                     "label": "Улица",
                     "source_type": "own"
@@ -45,7 +50,8 @@
                 },
                 "gid": {
                     "label": "гид",
-                    "source_type": "own",
+                    "source_type": "custom",
+                    "field_type": "RangeInt",
                     "col_span": 1
                 },
                 "archive": {
@@ -54,7 +60,7 @@
                     "field_type": "ComboBox",
                     "combobox_values": {
                         "": "Все",
-                        "-1": "Архивные",
+                        "1": "Архивные",
                         "0": "Действующие"
                     }
                 },
@@ -78,13 +84,16 @@
                 
             },
             "query": [
-                "select ",
-                " g.gid, k.title as \"Вид\", g.street_id, ",
-                " p.code as \"Номер разрешения\", p.start_date as \"Дата разр.\", p.end_date as \"Конец разр.\", p.issued as \"Выдан\", ", 
-                " cntr.code as \"Номер договора\", cntr.start_date as \"Дата дог.\", cntr.end_date as \"Конец дог.\", ", 
-                " case when g.archive = -1 then 'АРХИВ' end as \"Архивная\", ",
-                " loi.owner as \"Собственник\", ",
-                " z.zonename as \"Номер зоны\" ",
+                " with zone_default as (SELECT id, zonename||' (auto)' as zonename  from schema_reklama.spr_zones where isdefault=true limit 1) ",
+                " select ",
+                " case when g.archive = 1 then 'АРХИВ' end as \"АК\", ",
+                " g.gid, k.title as \"Вид\", ",
+                " s.name as \"Улица\", g.postnum as \"Дом\", ", 
+                " case when z.zonename is not null then z.zonename else (select zonename from zone_default) end as \"Номер зоны\", ",
+                " p.code as \"Номер разрешения\", case when p.archive = 1 then 'A' end as \"АР\", p.start_date as \"Дата разр.\", p.end_date as \"Конец разр.\", p.issued as \"Выдан\", ",
+                " p.code as \"Номер договора\", case when p.archive = 1 then 'A' end as \"АД\", cntr.start_date as \"Дата дог.\", cntr.end_date as \"Конец дог.\", ", 
+                " loi.owner as \"Собственник\" ",
+                
                 " ",
                 " FROM schema_reklama.geo_ad_constructions g ",
                 " LEFT JOIN schema_reklama.ad_permissions p ON p.construction_id = g.gid ",
@@ -93,16 +102,20 @@
                 " LEFT JOIN schema_reklama.v_spr_persons_firms loi ON loi.id = g.land_owner_id ",
                 " LEFT JOIN schema_reklama.ad_zones_streets zs ON g.street_id = zs.street_sys ",
                 " LEFT JOIN schema_reklama.spr_zones z ON z.id = zs.zone_id ",
+                " LEFT JOIN schema_spr.spr_streets s ON s.SYSUL = g.street_id ",
+
                 " WHERE ",
                 " (%(gid)s is null OR g.gid = %(gid)s) ",
                 " AND (%(land_owner_id)s is null OR loi.id = %(land_owner_id)s) ",
                 " AND (%(kind_id)s is null OR k.id = %(kind_id)s) ",
+                " AND (%(isschema)s is null OR k.isschema = %(isschema)s) ",
+                " AND (%(street_id)s is null OR g.street_id = %(street_id)s) ",
                 " AND (%(perm_code)s is null OR p.code = %(perm_code)s) ",
                 " AND (%(issued)s is null OR p.issued = %(issued)s) ",
                 " AND (%(perm_date_from)s is null OR p.start_date >= %(perm_date_from)s) ",
                 " AND (%(perm_date_to)s is null OR p.end_date < %(perm_date_to)s) ",
                 " AND (%(archive)s is null OR g.archive = %(archive)s) ",
-                " AND (%(zone_id)s is null OR z.id = %(zone_id)s) "
+                " AND (%(zone_id)s is null OR CASE WHEN %(zone_id)s = (select id from zone_default)  THEN z.id=4 OR z.id is NULL else z.id = %(zone_id)s END)"
             ]
             
         },
