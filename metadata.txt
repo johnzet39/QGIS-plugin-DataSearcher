@@ -6,7 +6,7 @@
 name=Data Searcher
 qgisMinimumVersion=3.0
 description=Search data by preset queries in json
-version=0.1
+version=20.0819
 author=Zlatanov Evgeniy
 email=johnzet@yandex.ru
 

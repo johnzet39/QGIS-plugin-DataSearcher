@@ -11,16 +11,33 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Data Searcher</string>
+   <string>Экстрапоиск</string>
   </property>
   <widget class="QWidget" name="dockWidgetContents">
    <layout class="QVBoxLayout" name="verticalLayout_2">
     <item>
-     <widget class="QgsMapLayerComboBox" name="combo_layers">
-      <property name="toolTip">
-       <string>Слой для поиска</string>
-      </property>
-     </widget>
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <widget class="QComboBox" name="combo_layers"/>
+      </item>
+      <item>
+       <widget class="QPushButton" name="buttonRefreshLayers">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="icon">
+         <iconset resource="resources.qrc">
+          <normaloff>:/plugins/_Data_searcher/icons/refresh_24.png</normaloff>:/plugins/_Data_searcher/icons/refresh_24.png</iconset>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </item>
     <item>
      <widget class="QGroupBox" name="fieldsGroupBox">
@@ -264,13 +281,6 @@
    </layout>
   </widget>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>QgsMapLayerComboBox</class>
-   <extends>QComboBox</extends>
-   <header>qgsmaplayercombobox.h</header>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections/>
 </ui>

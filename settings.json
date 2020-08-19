@@ -1,7 +1,7 @@
 {
     "Layers": {
         "Рекламные конструкции": {
-            "columns_count": 3,
+            "columns_count": 4,
             "column_key": "gid",
             "fields" : {
                 "land_owner_id": {
@@ -10,21 +10,24 @@
                     "query_data": "select id, owner from schema_reklama.v_spr_persons_firms order by owner",
                     "field_key": "id",
                     "field_title": "owner",
-                    "minmax_size": [100, 3000]
+                    "minmax_size": [100, 3000],
+                    "col_span": 2
                 },
                 "kind_id": {
                     "label": "Вид",
                     "source_type": "own",
                     "col_span": 1
-                },  
-                "isschema": {
-                    "label": "В схеме",
-                    "source_type": "custom",
-                    "field_type": "CheckBox"
-                },             
+                },          
                 "street_id": {
                     "label": "Улица",
                     "source_type": "own"
+                },
+                "zone_id": {
+                    "label": "Номер зоны",
+                    "source_type": "layer",
+                    "layer_name": "spr_zones",
+                    "field_key": "id",
+                    "field_title": "zonename"
                 },
                 "perm_code": {
                     "label": "Номер разрешения",
@@ -32,10 +35,20 @@
                     "field_type": "RangeInt"
                 },
                 "perm_date": {
-                    "label": "Пер.дейст.разр.",
+                    "label": "Период разрешения",
                     "source_type": "custom",
                     "field_type": "DateTime",
                     "isrange": "True"
+                },
+                "issued": {
+                    "label": "Разр. выдано",
+                    "source_type": "custom",
+                    "field_type": "ComboBox",
+                    "combobox_values": {
+                        "": "Все",
+                        "-1": "Выдан",
+                        "0": "Не выдан"
+                    }
                 },
                 "contr_code": {
                     "label": "Номер договора",
@@ -43,17 +56,13 @@
                     "field_type": "RangeInt"
                 },
                 "contr_date": {
-                    "label": "Пер.дейст.дог.",
+                    "label": "Период договора",
                     "source_type": "custom",
                     "field_type": "DateTime",
                     "isrange": "True"
                 },
-                "gid": {
-                    "label": "гид",
-                    "source_type": "custom",
-                    "field_type": "RangeInt",
-                    "col_span": 1
-                },
+                "__2": {},
+                "__3": {},
                 "archive": {
                     "label": "Актуальность",
                     "source_type": "custom",
@@ -64,22 +73,16 @@
                         "0": "Действующие"
                     }
                 },
-                "issued": {
-                    "label": "Паспорт выдан",
+                "isschema": {
+                    "label": "В схеме",
                     "source_type": "custom",
-                    "field_type": "ComboBox",
-                    "combobox_values": {
-                        "": "Все",
-                        "-1": "Выдан",
-                        "0": "Не выдан"
-                    }
+                    "field_type": "CheckBox"
                 },
-                "zone_id": {
-                    "label": "Номер зоны",
-                    "source_type": "layer",
-                    "layer_name": "spr_zones",
-                    "field_key": "id",
-                    "field_title": "zonename"
+                "gid": {
+                    "label": "гид",
+                    "source_type": "custom",
+                    "field_type": "RangeInt",
+                    "col_span": 1
                 }
                 
             },

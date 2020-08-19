@@ -73,7 +73,7 @@ class DataSearcher:
         self.actions = []
         self.menu = self.tr(u'&Data Searcher')
 
-        self.toolbar = self.iface.addToolBar(u'DataSearcher')
+        self.toolbar = self.iface.addToolBar(u'Экстрапоиск')
         self.toolbar.setObjectName(u'DataSearcher')
 
         #print "** INITIALIZING DataSearcher"
@@ -165,6 +165,7 @@ class DataSearcher:
 
         if add_to_toolbar:
             self.toolbar.addAction(action)
+            # self.iface.addToolBarIcon(action)
 
         if add_to_menu:
             self.iface.addPluginToMenu(
@@ -181,7 +182,7 @@ class DataSearcher:
         icon_path = ':/plugins/_Data_searcher/icon.png'
         self.add_action(
             icon_path,
-            text=self.tr(u'Data searcher'),
+            text=self.tr(u'Экстрапоиск'),
             callback=self.run,
             parent=self.iface.mainWindow())
 
@@ -257,6 +258,7 @@ class DataSearcher:
     def connectActions(self):
         # QgsProject.instance().cleared.connect(self.closePanel)
         self.dockwidget.buttonSearch.clicked.connect(self.execSearch)
+        self.dockwidget.buttonRefreshLayers.clicked.connect(self.populateComboLayers)
         self.dockwidget.buttonReset.clicked.connect(self.execReset)
         self.dockwidget.buttonCenter.clicked.connect(self.centerToSelect)
         self.dockwidget.buttonZoom.clicked.connect(self.zoomToSelect)
@@ -264,12 +266,14 @@ class DataSearcher:
         self.dockwidget.buttonClearFilterMap.clicked.connect(self.clearFilterMapBySelect)
         self.dockwidget.tableResult.itemDoubleClicked.connect(self.execDoubleClickedTable)
         self.dockwidget.tableResult.itemSelectionChanged.connect(self.setRowSelectedButtonsStatus)
-        # self.dockwidget.combo_layers.currentIndexChanged.connect(self.comboLayersChanged) #move to populateComboLayers
+        if self.dockwidget:
+            self.dockwidget.combo_layers.currentIndexChanged.connect(self.comboLayersChanged)
         print("connect")
 
     def disconnectActions(self):
         # QgsProject.instance().cleared.disconnect(self.closePanel)
         self.dockwidget.buttonSearch.clicked.disconnect(self.execSearch)
+        self.dockwidget.buttonRefreshLayers.clicked.disconnect(self.populateComboLayers)
         self.dockwidget.buttonReset.clicked.disconnect(self.execReset)
         self.dockwidget.buttonCenter.clicked.disconnect(self.centerToSelect)
         self.dockwidget.buttonZoom.clicked.disconnect(self.zoomToSelect)
@@ -289,34 +293,47 @@ class DataSearcher:
     def comboLayersChanged(self):
         print("comboLayersChanged..")
         if self.dockwidget.combo_layers.count() <= 0:
+            self.clearForms()
+            return
+        if self.dockwidget.combo_layers.currentIndex() < 0:
+            self.clearForms()
             return
 
-        self.layer = self.dockwidget.combo_layers.currentLayer()
+        #self.layer = self.dockwidget.combo_layers.currentLayer()
+        self.layer = self.dockwidget.combo_layers.currentData()
         if self.layer:
             self.connInfo = QgsDataSourceUri(self.layer.dataProvider().dataSourceUri(expandAuthConfig=True))
         self.populateFilterFields()
 
+    def clearForms(self):
+        self.layer = None
+        self.clearFieldsLayout(self.fieldsLayout)
+        self.dockwidget.tableResult.setRowCount(0)
+        self.dockwidget.tableResult.sortItems(-1)
+
     def populateComboLayers(self):
+        self.dockwidget.combo_layers.clear()
+
         available_layers = self.settings["Layers"].keys()
-        layer_list = []
+
         for layer in QgsProject.instance().mapLayers().values():
-            if layer.name() not in available_layers:
-                layer_list.append(layer)
-        self.dockwidget.combo_layers.setExceptedLayerList(layer_list)
+            if layer.name() in available_layers:
+                self.dockwidget.combo_layers.addItem(layer.name(), layer)
+
+        if self.dockwidget.combo_layers.count() < 1:
+            self.clearForms()
+            return
 
         curlayer = self.iface.activeLayer()
         if curlayer is not None:
             if curlayer.name() in available_layers:
                 self.dockwidget.combo_layers.setCurrentText(curlayer.name())
 
-        self.layer = self.dockwidget.combo_layers.currentLayer()
+        self.layer = self.dockwidget.combo_layers.currentData()
         if self.layer:
             self.connInfo = QgsDataSourceUri(self.layer.dataProvider().dataSourceUri(expandAuthConfig=True))
 
         self.populateFilterFields()
-
-        self.dockwidget.combo_layers.currentIndexChanged.connect(self.comboLayersChanged)
-        # print('populated')
 
     def populateFilterFields(self):
         self.clearFieldsLayout(self.fieldsLayout)
@@ -362,22 +379,28 @@ class DataSearcher:
 
         for k in ava_fields.keys():
             if "col_span" in ava_fields[k].keys():
-                cnt += ava_fields[k]["col_span"] - 1
+                colspan = ava_fields[k]["col_span"] 
+                if colspan > 1:
+                    cnt += colspan - 1
 
         column_size = cnt // column_count
         if column_size * column_count < cnt:
             column_size += 1
         row = 0
         column = 0
-        for field_name in ava_fields:
-            if self.fieldsLayout.itemAtPosition(row, column):
+        for index, field_name in enumerate(ava_fields):
+            if index > 0:
                 row += 1
-            if row >= column_size:
-                row = 0
-                column += 2
-            if not field_name == "_":
+                if row >= column_size:
+                    row = 0
+                    column += 2
+                while self.fieldsLayout.itemAtPosition(row, column):
+                    row += 1
+                    if row >= column_size:
+                        row = 0
+                        column += 2
+            if not field_name.startswith("__"):
                 self.addWidget(row, field_name, ava_fields[field_name], column, dockWidgetContents)
-            row += 1
 
     def addWidget(self, row_num, field_name, field, column_num, content):
         label = QtWidgets.QLabel(content)
@@ -554,7 +577,7 @@ class DataSearcher:
         return comboBox
 
     def createWidgetByOwnField(self, field_name, content):
-        layer = self.dockwidget.combo_layers.currentLayer()
+        layer = self.dockwidget.combo_layers.currentData()
         idx_field = layer.fields().indexFromName(field_name)
         field_type = layer.editorWidgetSetup(idx_field).type()
         if not idx_field >= 0:
@@ -844,7 +867,3 @@ class DataSearcher:
             self.dockwidget.buttonZoom.setEnabled(False)
             self.dockwidget.buttonFilterMap.setEnabled(False)
 
-    def closePanel(self):
-        self.iface.removeDockWidget(self.dockwidget)
-        self.pluginIsActive = False
-        print('Closed')
