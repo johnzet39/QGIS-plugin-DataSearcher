@@ -23,7 +23,7 @@
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt, QVariant
 from qgis.PyQt.QtGui import QIcon, QIntValidator, QDoubleValidator
-from qgis.PyQt.QtWidgets import QAction, QTableWidgetItem
+from qgis.PyQt.QtWidgets import QAction, QTableWidgetItem, QApplication
 from qgis.PyQt import QtGui, QtWidgets, uic
 from qgis.core import QgsProject, QgsVectorLayer, QgsRelation, QgsDataSourceUri, QgsWkbTypes 
 from qgsdatetimeedit import QgsDateTimeEdit
@@ -262,6 +262,7 @@ class DataSearcher:
         self.dockwidget.buttonReset.clicked.connect(self.execReset)
         self.dockwidget.buttonCenter.clicked.connect(self.centerToSelect)
         self.dockwidget.buttonZoom.clicked.connect(self.zoomToSelect)
+        self.dockwidget.buttonCopy.clicked.connect(self.copySelected)
         self.dockwidget.buttonFilterMap.clicked.connect(self.filterMapBySelect)
         self.dockwidget.buttonClearFilterMap.clicked.connect(self.clearFilterMapBySelect)
         self.dockwidget.tableResult.itemDoubleClicked.connect(self.execDoubleClickedTable)
@@ -277,6 +278,7 @@ class DataSearcher:
         self.dockwidget.buttonReset.clicked.disconnect(self.execReset)
         self.dockwidget.buttonCenter.clicked.disconnect(self.centerToSelect)
         self.dockwidget.buttonZoom.clicked.disconnect(self.zoomToSelect)
+        self.dockwidget.buttonCopy.clicked.disconnect(self.copySelected)
         self.dockwidget.buttonFilterMap.clicked.disconnect(self.filterMapBySelect)
         self.dockwidget.buttonClearFilterMap.clicked.disconnect(self.clearFilterMapBySelect)
         self.dockwidget.combo_layers.currentIndexChanged.disconnect(self.comboLayersChanged)
@@ -823,7 +825,6 @@ class DataSearcher:
         del featuresById
 
     def zoomToSelect(self):
-
         table = self.dockwidget.tableResult
         row = table.currentRow()
         featuresById = self.layer.getFeatures("{0} = {1}".format(
@@ -857,13 +858,41 @@ class DataSearcher:
     def clearFilterMapBySelect(self):
         self.layer.setSubsetString('')
 
+    def copySelected(self):
+        table = self.dockwidget.tableResult
+        selectionModel = table.selectionModel()
+        colcount = table.columnCount()
+
+        rowStrings = []
+        headers = [table.horizontalHeaderItem(col).text() for col in range(colcount)]
+        rowStrings.append('\t'.join(headers))
+
+        for modelIndex in selectionModel.selectedRows():
+            rowItemsStrings = []
+            for columnIndex in range(colcount):
+                item = table.item(modelIndex.row(), columnIndex)
+                itemText = '""'
+                if item:  
+                    itemText = '"' + item.text().replace('"', '""') + '"'
+                rowItemsStrings.append(itemText)
+            rowStrings.append('\t'.join(rowItemsStrings))
+        
+        selectedResultString = '\n'.join(rowStrings)
+        QApplication.clipboard().setText(selectedResultString)
+
     def setRowSelectedButtonsStatus(self):
         if self.dockwidget.tableResult.currentRow() >= 0:
             self.dockwidget.buttonCenter.setEnabled(True)
             self.dockwidget.buttonZoom.setEnabled(True)
-            self.dockwidget.buttonFilterMap.setEnabled(True)
         else:
             self.dockwidget.buttonCenter.setEnabled(False)
             self.dockwidget.buttonZoom.setEnabled(False)
             self.dockwidget.buttonFilterMap.setEnabled(False)
+
+        if self.dockwidget.tableResult.selectionModel().hasSelection():
+            self.dockwidget.buttonFilterMap.setEnabled(True)
+            self.dockwidget.buttonCopy.setEnabled(True)
+        else:
+            self.dockwidget.buttonFilterMap.setEnabled(False)
+            self.dockwidget.buttonCopy.setEnabled(False)
 
