@@ -124,7 +124,7 @@
         </property>
         <property name="sizeHint" stdset="0">
          <size>
-          <width>20</width>
+          <width>10</width>
           <height>20</height>
          </size>
         </property>
@@ -192,7 +192,7 @@
         </property>
         <property name="sizeHint" stdset="0">
          <size>
-          <width>20</width>
+          <width>10</width>
           <height>20</height>
          </size>
         </property>
@@ -213,7 +213,7 @@
          </size>
         </property>
         <property name="toolTip">
-         <string>Показать на карте только выбранные объекты</string>
+         <string>Скопировать выделенные строки</string>
         </property>
         <property name="text">
          <string/>

@@ -701,13 +701,14 @@ class DataSearcher:
 
                     cnt_rows = len(results)
                     self.iface.mainWindow().statusBar().showMessage(u'Всего найдено: ' + str(cnt_rows))
-
+                    
+                    table = self.dockwidget.tableResult
                     if cnt_rows > 0:
+                        table.setEnabled(True)
                         headers = list(results[0].keys())
                         headers.insert(0, headers.pop(headers.index(self.column_key)))
                         cnt_cols = len(headers)
 
-                        table = self.dockwidget.tableResult
                         table.setRowCount(cnt_rows)
                         table.setColumnCount(cnt_cols)
                         table.setHorizontalHeaderLabels(headers)
@@ -718,8 +719,17 @@ class DataSearcher:
                                 if cell_result:
                                     item = QTableWidgetItem(str(cell_result))
                                     table.setItem(rn, cn, item)
-                        # table.horizontalHeaderItem(0).setToolTip("Column 1 ")
                         table.resizeColumnsToContents()
+                    
+                    else:
+                        table.setEnabled(False)
+                        table.setRowCount(1)
+                        table.setColumnCount(1)
+                        table.setHorizontalHeaderLabels([''])
+                        table.setColumnHidden(0, False)
+                        item = QTableWidgetItem(str('Нет данных для отображения'))
+                        item.setTextAlignment(Qt.AlignCenter)
+                        table.setItem(0, 0, item)
 
                 except Exception as e:
                     print(e)
