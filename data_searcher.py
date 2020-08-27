@@ -665,16 +665,6 @@ class DataSearcher:
         self.dockwidget.tableResult.setRowCount(0)
         self.dockwidget.tableResult.sortItems(-1)
 
-        # pwd = self.connInfo.password()
-        # username = self.connInfo.username()
-        # wkbtype = self.connInfo.wkbType()
-        # table = self.connInfo.table()
-        # schema = self.connInfo.schema()
-        # server_ip = self.connInfo.host()
-        # database = self.connInfo.database()
-        # port = self.connInfo.port()
-        # geom = self.connInfo.geometryColumn()
-
         sellayer = self.dockwidget.combo_layers.currentText()
         if self.layer:
             fields = self.settings["Layers"][sellayer]["fields"]
@@ -683,7 +673,6 @@ class DataSearcher:
 
             attributes_values = self.generateQueryAttributesValues(fields)
             #print(attributes_values)
-            # return
 
             if len(query) > 0:
                 try:
@@ -697,7 +686,6 @@ class DataSearcher:
                     #print(mogrified_query)
                     cursor.execute(mogrified_query)
                     results = cursor.fetchall()
-                    #print(results)
 
                     cnt_rows = len(results)
                     self.iface.mainWindow().statusBar().showMessage(u'Всего найдено: ' + str(cnt_rows))

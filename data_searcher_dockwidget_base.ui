@@ -18,7 +18,11 @@
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
-       <widget class="QComboBox" name="combo_layers"/>
+       <widget class="QComboBox" name="combo_layers">
+        <property name="toolTip">
+         <string>Слой для поиска</string>
+        </property>
+       </widget>
       </item>
       <item>
        <widget class="QPushButton" name="buttonRefreshLayers">
@@ -27,6 +31,9 @@
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
+        </property>
+        <property name="toolTip">
+         <string>Обновить список слоев для поиска</string>
         </property>
         <property name="text">
          <string/>

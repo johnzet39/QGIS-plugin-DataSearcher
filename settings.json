@@ -94,7 +94,7 @@
                 " s.name as \"Улица\", g.postnum as \"Дом\", ", 
                 " case when z.zonename is not null then z.zonename else (select zonename from zone_default) end as \"Номер зоны\", ",
                 " p.code as \"Номер разрешения\", case when p.archive = 1 then 'A' end as \"АР\", p.start_date as \"Дата разр.\", p.end_date as \"Конец разр.\", p.issued as \"Выдан\", ",
-                " p.code as \"Номер договора\", case when p.archive = 1 then 'A' end as \"АД\", cntr.start_date as \"Дата дог.\", cntr.end_date as \"Конец дог.\", ", 
+                " cntr.code as \"Номер договора\", case when cntr.archive = 1 then 'A' end as \"АД\", cntr.start_date as \"Дата дог.\", cntr.end_date as \"Конец дог.\", ", 
                 " loi.owner as \"Собственник\" ",
                 
                 " ",
@@ -114,9 +114,12 @@
                 " AND (%(isschema)s is null OR k.isschema = %(isschema)s) ",
                 " AND (%(street_id)s is null OR g.street_id = %(street_id)s) ",
                 " AND (%(perm_code)s is null OR p.code = %(perm_code)s) ",
+                " AND (%(contr_code)s is null OR cntr.code = %(contr_code)s) ",
                 " AND (%(issued)s is null OR p.issued = %(issued)s) ",
                 " AND (%(perm_date_from)s is null OR p.start_date >= %(perm_date_from)s) ",
+                " AND (%(contr_date_from)s is null OR cntr.start_date >= %(contr_date_from)s) ",
                 " AND (%(perm_date_to)s is null OR p.end_date < %(perm_date_to)s) ",
+                " AND (%(contr_date_to)s is null OR cntr.end_date < %(contr_date_to)s) ",
                 " AND (%(archive)s is null OR g.archive = %(archive)s) ",
                 " AND (%(zone_id)s is null OR CASE WHEN %(zone_id)s = (select id from zone_default)  THEN z.id=4 OR z.id is NULL else z.id = %(zone_id)s END)"
             ]
