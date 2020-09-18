@@ -21,9 +21,9 @@
  *                                                                         *
  ***************************************************************************/
 """
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt, QVariant
+from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt, QVariant, QSize
 from qgis.PyQt.QtGui import QIcon, QIntValidator, QDoubleValidator
-from qgis.PyQt.QtWidgets import QAction, QTableWidgetItem, QApplication
+from qgis.PyQt.QtWidgets import QAction, QTableWidgetItem, QApplication, QDialog
 from qgis.PyQt import QtGui, QtWidgets, uic
 from qgis.core import QgsProject, QgsVectorLayer, QgsRelation, QgsDataSourceUri, QgsWkbTypes 
 from qgsdatetimeedit import QgsDateTimeEdit
@@ -32,13 +32,13 @@ from qgsfilterlineedit import QgsFilterLineEdit
 from .resources import *
 
 # Import the code for the DockWidget
+from .about import AbtDialog, AbtInfo
 from .data_searcher_dockwidget import DataSearcherDockWidget
 import os.path
 import json
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import datetime
-
 
 class DataSearcher:
     """QGIS Plugin Implementation."""
@@ -86,6 +86,13 @@ class DataSearcher:
         self.layer = None
         self.connInfo = None
         self.column_key = None
+
+        self.ui_about = None
+
+    # about button
+    def show_about(self):
+        self.ui_about.setWindowFlags(self.ui_about.windowFlags() | Qt.WindowStaysOnTopHint | Qt.WindowMinMaxButtonsHint)
+        self.ui_about.show()
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -223,8 +230,7 @@ class DataSearcher:
 
     def run(self):
         """Run method that loads and starts the plugin"""
-        print("run start: ", datetime.now().strftime("%H:%M:%S.%f")[:-3])
-        print(self.dockwidget, self.pluginIsActive)
+        # print("run start: ", datetime.now().strftime("%H:%M:%S.%f")[:-3])
         if not self.pluginIsActive:
             self.pluginIsActive = True
 
@@ -243,17 +249,23 @@ class DataSearcher:
                 self.populateComboLayers()
                 self.setRowSelectedButtonsStatus()
 
+                # about button
+                self.ui_about = AbtDialog()
+                info = AbtInfo()
+                self.dockwidget.pushButton_about.setToolTip(
+                    "О программе:\nМодуль: {0}\nВерсия: {1}\nРазработчик: {2}"
+                        .format(info.pluginName, info.version, info.creator)
+                )
+
             self.connectActions()
 
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
 
-            
-
             self.iface.addDockWidget(Qt.BottomDockWidgetArea, self.dockwidget)
             self.dockwidget.show()
 
-        print("run end: ", datetime.now().strftime("%H:%M:%S.%f")[:-3])
+        # print("run end: ", datetime.now().strftime("%H:%M:%S.%f")[:-3])
 
     def connectActions(self):
         # QgsProject.instance().cleared.connect(self.closePanel)
@@ -267,9 +279,10 @@ class DataSearcher:
         self.dockwidget.buttonClearFilterMap.clicked.connect(self.clearFilterMapBySelect)
         self.dockwidget.tableResult.itemDoubleClicked.connect(self.execDoubleClickedTable)
         self.dockwidget.tableResult.itemSelectionChanged.connect(self.setRowSelectedButtonsStatus)
+        self.dockwidget.pushButton_about.clicked.connect(self.show_about)
         if self.dockwidget:
             self.dockwidget.combo_layers.currentIndexChanged.connect(self.comboLayersChanged)
-        print("connect")
+        # print("connect")
 
     def disconnectActions(self):
         # QgsProject.instance().cleared.disconnect(self.closePanel)
@@ -284,7 +297,8 @@ class DataSearcher:
         self.dockwidget.combo_layers.currentIndexChanged.disconnect(self.comboLayersChanged)
         self.dockwidget.tableResult.itemDoubleClicked.disconnect(self.execDoubleClickedTable)
         self.dockwidget.tableResult.itemSelectionChanged.disconnect(self.setRowSelectedButtonsStatus)
-        print('disconnect')
+        self.dockwidget.pushButton_about.clicked.disconnect(self.show_about)
+        # print('disconnect')
 
     def loadLayersData(self):
         with open(os.path.join(self.plugin_dir, "settings.json"), "r") as read_file:
@@ -293,7 +307,7 @@ class DataSearcher:
                 self.dockwidget.combo_layers.addItem(layer)
 
     def comboLayersChanged(self):
-        print("comboLayersChanged..")
+        # print("comboLayersChanged..")
         if self.dockwidget.combo_layers.count() <= 0:
             self.clearForms()
             return
@@ -894,3 +908,7 @@ class DataSearcher:
             self.dockwidget.buttonFilterMap.setEnabled(False)
             self.dockwidget.buttonCopy.setEnabled(False)
 
+        if self.dockwidget.combo_layers.currentIndex() > -1:
+            self.dockwidget.buttonClearFilterMap.setEnabled(True)
+        else:
+            self.dockwidget.buttonClearFilterMap.setEnabled(False)

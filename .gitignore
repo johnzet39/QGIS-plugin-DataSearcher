@@ -11,3 +11,6 @@ Makefile
 .vscode/settings.json
 README.txt
 README.html
+about.py
+about_ui.*
+about.png

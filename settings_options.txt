@@ -6,7 +6,7 @@ Layers:
         fields:
             "field name":
                 label,
-                source_type {own, other, layer, postgres, same, custom},
+                source_type {own, other, layer, postgres, same, custom} (default - lineedit),
                 col_span,
                 source_field (same)
                 minmax_size

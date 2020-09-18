@@ -125,6 +125,41 @@
             ]
             
         },
+        "Контейнерные площадки     •": {
+            "columns_count": 3,
+            "column_key": "gid",
+            "fields" : {
+                "num_reestr": {
+                    "label": "Реестровый номер",
+                    "source_type": "own"
+                },
+                "street_id": {
+                    "label": "Улица",
+                    "source_type": "own"
+                },
+                "area_tko": {
+                    "label": "Площадь",
+                    "source_type": "own",
+                    "isrange": "True"
+                },
+                "comments": {
+                    "label": "Комментарии",
+                    "source_type": "own"
+                }
+            },
+            "query": [
+                " select  ",
+                " t.gid, t.num_reestr as \"Реестровый номер\", t.street_id as \"Улица\", t.area_tko as \"Площадь площадки\", ",
+                " t.comments as \"Комментарии\" ",
+                " from geo_tko t ", 
+                " where ",
+                " (%(num_reestr)s is null OR t.num_reestr = %(num_reestr)s) ",
+                " AND (%(area_tko_from)s is null OR t.area_tko >= %(area_tko_from)s) ",
+                " AND (%(area_tko_to)s is null OR t.area_tko < %(area_tko_to)s) ",
+                " AND (%(comments)s is null OR t.comments ilike %(comments)s) "
+            ]
+
+        },
         "spr_ad_kind": {
             "columns_count": 3,
             "column_key": "id",
