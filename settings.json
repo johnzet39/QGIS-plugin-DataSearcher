@@ -186,7 +186,7 @@
                 " from ",
 
                 "(select  ",
-                "   t.gid, t.num_reestr , str.name as streetname, t.postnum, t.area_tko, ",
+                "   t.gid, t.num_reestr , str.name as streetname, t.postnum, coalesce(t.area_tko, 0) as area_tko, ",
                 "   (select coalesce(sum(sc.volume), 0) from schema_spr.spr_tko_containers sc where sc.geo_tko_gid = t.gid) as vol, ",
                 "   (select coalesce(count(*), 0) from schema_spr.spr_tko_containers sc where sc.geo_tko_gid = t.gid) as c_count, ",
                 "   case when sc.type_id = 1 then 'Куб' when sc.type_id = 2 then 'Кеска' end  || case when sc.condition_id=1 then '(OK)' when sc.condition_id=2 then '(X)' else '' end as type_cond, ",

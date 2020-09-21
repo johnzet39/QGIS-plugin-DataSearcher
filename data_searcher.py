@@ -246,9 +246,7 @@ class DataSearcher:
                 self.fieldsLayout = self.dockwidget.fieldsGroupBox.layout().itemAt(0)
 
                 self.loadLayersData()
-                self.populateComboLayers()
-                self.setRowSelectedButtonsStatus()
-
+                
                 # about button
                 self.ui_about = AbtDialog()
                 info = AbtInfo()
@@ -256,6 +254,9 @@ class DataSearcher:
                     "О программе:\nМодуль: {0}\nВерсия: {1}\nРазработчик: {2}"
                         .format(info.pluginName, info.version, info.creator)
                 )
+
+            self.populateComboLayers()
+            self.setRowSelectedButtonsStatus()
 
             self.connectActions()
 
