@@ -718,7 +718,7 @@ class DataSearcher:
                         for rn in range(0, cnt_rows):
                             for cn in range(0, cnt_cols):
                                 cell_result = results[rn][headers[cn]]
-                                if cell_result:
+                                if cell_result is not None:
                                     item = QTableWidgetItem(str(cell_result))
                                     table.setItem(rn, cn, item)
                         table.resizeColumnsToContents()

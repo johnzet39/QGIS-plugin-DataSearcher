@@ -142,43 +142,76 @@
                     "source_type": "own",
                     "isrange": "True"
                 },
+                "volume": {
+                    "label": "Общий объем",
+                    "source_type": "custom",
+                    "field_type": "rangefloat",
+                    "isrange": "True"
+                },
+                "c_count": {
+                    "label": "Всего контейнеров",
+                    "source_type": "custom",
+                    "field_type": "rangeint",
+                    "isrange": "True"
+                },
                 "comments": {
                     "label": "Комментарии",
                     "source_type": "own"
+                },
+                "type_id": {
+                    "label": "Тип контейнеров",
+                    "source_type": "custom",
+                    "field_type": "ComboBox",
+                    "combobox_values": {
+                        "": "",
+                        "1": "Куб",
+                        "2": "Кеска"
+                    }
+                },
+                "condition_id": {
+                    "label": "Состояние",
+                    "source_type": "custom",
+                    "field_type": "ComboBox",
+                    "combobox_values": {
+                        "": "",
+                        "1": "Исправен",
+                        "2": "Требует замены"
+                    }
                 }
             },
             "query": [
-                " select  ",
-                " t.gid, t.num_reestr as \"Реестровый номер\", t.street_id as \"Улица\", t.area_tko as \"Площадь площадки\", ",
-                " t.comments as \"Комментарии\" ",
-                " from geo_tko t ", 
-                " where ",
-                " (%(num_reestr)s is null OR t.num_reestr = %(num_reestr)s) ",
-                " AND (%(area_tko_from)s is null OR t.area_tko >= %(area_tko_from)s) ",
-                " AND (%(area_tko_to)s is null OR t.area_tko < %(area_tko_to)s) ",
-                " AND (%(comments)s is null OR t.comments ilike %(comments)s) "
+                " select gid, num_reestr as \"Реестровый номер\", streetname as \"Улица\", postnum as \"Дом\", area_tko as \"Площадь площадки\", ", 
+                "        vol as \"Общий объем\", c_count as \"Всего контейнеров\",  string_agg(type_cond, ',') as \"Тип\", ",
+                " comments as \"Комментарии\"  ", 
+                " from ",
+
+                "(select  ",
+                "   t.gid, t.num_reestr , str.name as streetname, t.postnum, t.area_tko, ",
+                "   (select coalesce(sum(sc.volume), 0) from schema_spr.spr_tko_containers sc where sc.geo_tko_gid = t.gid) as vol, ",
+                "   (select coalesce(count(*), 0) from schema_spr.spr_tko_containers sc where sc.geo_tko_gid = t.gid) as c_count, ",
+                "   case when sc.type_id = 1 then 'Куб' when sc.type_id = 2 then 'Кеска' end  || case when sc.condition_id=1 then '(OK)' when sc.condition_id=2 then '(X)' else '' end as type_cond, ",
+                "   ",
+                "   t.comments",
+                "   from geo_tko t ", 
+                "   LEFT JOIN schema_spr.spr_tko_containers sc ON sc.geo_tko_gid = t.gid",
+                "   LEFT JOIN schema_spr.spr_streets str ON str.sysul = t.street_id",
+                "   where ",
+                "   (%(num_reestr)s is null OR t.num_reestr = %(num_reestr)s) ",
+                "   AND (%(street_id)s is null OR t.street_id = %(street_id)s) ",
+                "   AND (%(area_tko_from)s is null OR t.area_tko >= %(area_tko_from)s) ",
+                "   AND (%(area_tko_to)s is null OR t.area_tko <= %(area_tko_to)s) ",
+                "   AND (%(volume_from)s is null OR (select coalesce(sum(sc.volume), 0) from schema_spr.spr_tko_containers sc where sc.geo_tko_gid = t.gid) >= %(volume_from)s) ",
+                "   AND (%(volume_to)s is null OR (select coalesce(sum(sc.volume), 0) from schema_spr.spr_tko_containers sc where sc.geo_tko_gid = t.gid) <= %(volume_to)s) ",
+                "   AND (%(c_count_from)s is null OR (select coalesce(count(*), 0) from schema_spr.spr_tko_containers sc where sc.geo_tko_gid = t.gid) >= %(c_count_from)s) ",
+                "   AND (%(c_count_to)s is null OR (select coalesce(count(*), 0) from schema_spr.spr_tko_containers sc where sc.geo_tko_gid = t.gid) <= %(c_count_to)s) ",
+                "   AND (%(comments)s is null OR t.comments ilike %(comments)s) ",
+                "   AND (%(type_id)s is null OR sc.type_id = %(type_id)s) ",
+                "   AND (%(condition_id)s is null OR sc.condition_id = %(condition_id)s) ",
+                " ) s",
+
+                " group by gid, num_reestr, streetname, postnum, area_tko, vol, c_count, comments"
             ]
 
-        },
-        "spr_ad_kind": {
-            "columns_count": 3,
-            "column_key": "id",
-            "fields" : {
-                "id": {
-                    "label": "id",
-                    "source_type": "own"
-                },
-                "title": {
-                    "label": "title",
-                    "source_type": "own"
-                }
-            },
-            "query": [
-                "select k.id, k.title from schema_reklama.spr_ad_kind k",
-                " WHERE (%(id)s is null OR k.id = %(id)s) ", 
-                " AND (%(title)s is null OR lower(k.title) ilike %(title)s) "
-            ]
-            
         }
     }
 }
