@@ -417,7 +417,10 @@ class DataSearcher:
                         row = 0
                         column += 2
             if not field_name.startswith("__"):
-                self.addWidget(row, field_name, ava_fields[field_name], column, dockWidgetContents)
+                try:
+                    self.addWidget(row, field_name, ava_fields[field_name], column, dockWidgetContents)
+                except Exception as e:
+                    print('Field "{0}" error. {1}'.format(field_name, e))
 
     def addWidget(self, row_num, field_name, field, column_num, content):
         label = QtWidgets.QLabel(content)
@@ -586,6 +589,8 @@ class DataSearcher:
         comboBox = QtWidgets.QComboBox(content)
         comboBox.setEditable(True)
 
+        if len(QgsProject.instance().mapLayersByName(layer_name)) < 1:
+            raise NotImplementedError(f'Layer "{layer_name}" not found.')
         layer = QgsProject.instance().mapLayersByName(layer_name)[0]
         field_title = field.get("field_title", layer.displayExpression())
         for feat in layer.getFeatures():
@@ -676,6 +681,12 @@ class DataSearcher:
                 layout.itemAt(i).widget().setParent(None)  
         # print('count after: ', layout.count(), 'total: ',  self.fieldsLayout.count())
 
+    def readQueryFromFile(self, query_path):
+        query = ''
+        with open(os.path.join(self.plugin_dir, query_path), "r") as read_file:
+            query = read_file.read().replace('\n', '')
+        return query
+
     def execSearch(self):
         self.dockwidget.tableResult.setRowCount(0)
         self.dockwidget.tableResult.sortItems(-1)
@@ -684,7 +695,13 @@ class DataSearcher:
         if self.layer:
             fields = self.settings["Layers"][sellayer]["fields"]
             self.column_key = self.settings["Layers"][sellayer]["column_key"]
-            query = "".join(self.settings["Layers"][sellayer]["query"])
+
+            query = ""
+            value_query = self.settings["Layers"][sellayer]["query"]
+            if isinstance(value_query, list):
+                query = "".join(value_query)
+            elif isinstance(value_query, str):
+                query = self.readQueryFromFile(value_query)
 
             attributes_values = self.generateQueryAttributesValues(fields)
             #print(attributes_values)
@@ -786,9 +803,10 @@ class DataSearcher:
                         return value if value is not None and len(str(value)) > 0  else None
                     elif widget.metaObject().className() == 'QgsDateTimeEdit':
                         # print('QgsDateTimeEdit: ', widget_name)
-                        value_str = widget.text()
+                        # value_str = widget.text()
+                        value_str = widget.date().toString('dd.MM.yyyy')
                         value = None
-                        if value_str != 'NULL':
+                        if (value_str != 'NULL' and len(value_str.strip()) > 0):
                             value = datetime.strptime(value_str, '%d.%m.%Y')
                         return value
         return None
