@@ -420,7 +420,7 @@ class DataSearcher:
                 try:
                     self.addWidget(row, field_name, ava_fields[field_name], column, dockWidgetContents)
                 except Exception as e:
-                    print('Field "{0}" error. {1}'.format(field_name, e))
+                    print('Field "{0}" error: {1}'.format(field_name, e))
 
     def addWidget(self, row_num, field_name, field, column_num, content):
         label = QtWidgets.QLabel(content)
