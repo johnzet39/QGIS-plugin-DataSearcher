@@ -4,12 +4,12 @@
             "columns_count": 4,
             "column_key": "gid",
             "fields" : {
-                "land_owner_id": {
-                    "label": "Собственник",
+                "owner_id": {
+                    "label": "Владелец",
                     "source_type": "postgres",
-                    "query_data": "select id, owner from schema_reklama.v_spr_persons_firms order by owner",
+                    "query_data": "select id, owner, CASE WHEN org_form_name is not null THEN owner || ', ' || org_form_name ELSE owner END as owner_and_form from schema_reklama.v_spr_persons_firms order by owner",
                     "field_key": "id",
-                    "field_title": "owner",
+                    "field_title": "owner_and_form",
                     "minmax_size": [100, 3000],
                     "col_span": 2
                 },
@@ -25,9 +25,30 @@
                 "zone_id": {
                     "label": "Номер зоны",
                     "source_type": "layer",
-                    "layer_name": "spr_zones",
+                    "layer_name": "spr_ad_zones",
                     "field_key": "id",
                     "field_title": "zonename"
+                },
+                "archive": {
+                    "label": "Актуальность",
+                    "source_type": "custom",
+                    "field_type": "ComboBox",
+                    "combobox_values": {
+                        "": "Все",
+                        "1": "Архивные",
+                        "0": "Действующие"
+                    }
+                },
+                "isschema": {
+                    "label": "В схеме",
+                    "source_type": "custom",
+                    "field_type": "CheckBox"
+                },
+                "gid": {
+                    "label": "ID",
+                    "source_type": "custom",
+                    "field_type": "RangeInt",
+                    "col_span": 1
                 },
                 "perm_code": {
                     "label": "Номер разрешения",
@@ -50,6 +71,7 @@
                         "0": "Не выдан"
                     }
                 },
+                "__2": {},
                 "contr_code": {
                     "label": "Номер договора",
                     "source_type": "custom",
@@ -61,68 +83,9 @@
                     "field_type": "DateTime",
                     "isrange": "True"
                 },
-                "__2": {},
-                "__3": {},
-                "archive": {
-                    "label": "Актуальность",
-                    "source_type": "custom",
-                    "field_type": "ComboBox",
-                    "combobox_values": {
-                        "": "Все",
-                        "1": "Архивные",
-                        "0": "Действующие"
-                    }
-                },
-                "isschema": {
-                    "label": "В схеме",
-                    "source_type": "custom",
-                    "field_type": "CheckBox"
-                },
-                "gid": {
-                    "label": "гид",
-                    "source_type": "custom",
-                    "field_type": "RangeInt",
-                    "col_span": 1
-                }
-                
+                "__3": {}
             },
-            "query": [
-                " with zone_default as (SELECT id, zonename||' (auto)' as zonename  from schema_reklama.spr_zones where isdefault=true limit 1) ",
-                " select ",
-                " case when g.archive = 1 then 'АРХИВ' end as \"АК\", ",
-                " g.gid, k.title as \"Вид\", ",
-                " s.name as \"Улица\", g.postnum as \"Дом\", ", 
-                " case when z.zonename is not null then z.zonename else (select zonename from zone_default) end as \"Номер зоны\", ",
-                " p.code as \"Номер разрешения\", case when p.archive = 1 then 'A' end as \"АР\", p.start_date as \"Дата разр.\", p.end_date as \"Конец разр.\", p.issued as \"Выдан\", ",
-                " cntr.code as \"Номер договора\", case when cntr.archive = 1 then 'A' end as \"АД\", cntr.start_date as \"Дата дог.\", cntr.end_date as \"Конец дог.\", ", 
-                " loi.owner as \"Собственник\" ",
-                
-                " ",
-                " FROM schema_reklama.geo_ad_constructions g ",
-                " LEFT JOIN schema_reklama.ad_permissions p ON p.construction_id = g.gid ",
-                " LEFT JOIN schema_reklama.ad_contracts cntr ON cntr.construction_id = g.gid ",
-                " LEFT JOIN schema_reklama.spr_ad_kind k ON k.id = g.kind_id ",
-                " LEFT JOIN schema_reklama.v_spr_persons_firms loi ON loi.id = g.land_owner_id ",
-                " LEFT JOIN schema_reklama.ad_zones_streets zs ON g.street_id = zs.street_sys ",
-                " LEFT JOIN schema_reklama.spr_zones z ON z.id = zs.zone_id ",
-                " LEFT JOIN schema_spr.spr_streets s ON s.SYSUL = g.street_id ",
-
-                " WHERE ",
-                " (%(gid)s is null OR g.gid = %(gid)s) ",
-                " AND (%(land_owner_id)s is null OR loi.id = %(land_owner_id)s) ",
-                " AND (%(kind_id)s is null OR k.id = %(kind_id)s) ",
-                " AND (%(isschema)s is null OR k.isschema = %(isschema)s) ",
-                " AND (%(street_id)s is null OR g.street_id = %(street_id)s) ",
-                " AND (%(perm_code)s is null OR p.code = %(perm_code)s) ",
-                " AND (%(contr_code)s is null OR cntr.code = %(contr_code)s) ",
-                " AND (%(issued)s is null OR p.issued = %(issued)s) ",
-                " AND (%(perm_date_from)s is null OR p.start_date >= %(perm_date_from)s) ",
-                " AND (%(contr_date_from)s is null OR cntr.start_date >= %(contr_date_from)s) ",
-                " AND (%(perm_date_to)s is null OR p.end_date < %(perm_date_to)s) ",
-                " AND (%(contr_date_to)s is null OR cntr.end_date < %(contr_date_to)s) ",
-                " AND (%(archive)s is null OR g.archive = %(archive)s) ",
-                " AND (%(zone_id)s is null OR CASE WHEN %(zone_id)s = (select id from zone_default)  THEN z.id=4 OR z.id is NULL else z.id = %(zone_id)s END)"
-            ]
+            "query": "queries/ad_geo_constructions.sql"
             
         },
         "Контейнерные площадки     •": {
@@ -212,6 +175,46 @@
                 " group by gid, num_reestr, streetname, postnum, area_tko, vol, c_count, comments"
             ]
 
+        },
+        "Схема разм. рекламных конструкций     •": {
+            "columns_count": 4,
+            "column_key": "gid",
+            "fields" : {
+                "num": {
+                    "label": "Номер РК",
+                    "source_type": "own"
+                },
+                "type_id": {
+                    "label": "Вид",
+                    "source_type": "own"
+                },
+                "streetname": {
+                    "label": "Улица",
+                    "source_type": "own"
+                },
+                "status_id": {
+                    "label": "Статус",
+                    "source_type": "own"
+                }
+            },
+            "query": [
+                " select gid, num as \"Номер РК\", type_id as \"Вид\", streetname as \"Улица\", ",
+                " case  ",
+                "   when status_id=0 then 'Перспективная РК' ",
+                "   when status_id=1 then 'Проектная РК' ",
+                "   when status_id=2 then 'Согласовано' ",
+                "   when status_id=3 then 'Отказ' ",
+                "   when status_id=4 then 'Включена в схему' ",
+                "   when status_id=5 then 'Исключена из схемы' ",
+                "   else 'Другое' ",
+                " end   as \"Статус\" ",
+                " from geo_reklama_project ",
+                " where ",
+                " (%(num)s is null OR num like %(num)s) ",
+                " AND (%(streetname)s is null OR streetname = %(streetname)s) ",
+                " AND (%(type_id)s is null OR type_id = %(type_id)s) ",
+                " AND (%(status_id)s is null OR status_id = %(status_id)s) "
+            ]
         }
     }
 }
