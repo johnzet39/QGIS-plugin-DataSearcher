@@ -613,7 +613,10 @@ class DataSearcher:
             valuemap = layer.editorWidgetSetup(idx_field).config()['map']
             for item in valuemap:
                 first_key = list(item.keys())[0]
-                comboBox.addItem(first_key, QVariant(item[first_key]))
+                itemvalue = item[first_key]
+                if itemvalue == '{2839923C-8B7D-419E-B84B-CA2FE9B80EC7}':
+                    itemvalue = None
+                comboBox.addItem(first_key, QVariant(itemvalue))
             comboBox.setCurrentIndex(-1)
             return comboBox
         elif field_type == 'ValueRelation':
@@ -684,12 +687,13 @@ class DataSearcher:
     def readQueryFromFile(self, query_path):
         query = ''
         with open(os.path.join(self.plugin_dir, query_path), "r") as read_file:
-            query = read_file.read().replace('\n', '')
+            query = read_file.read().replace('\n', ' ')
         return query
 
     def execSearch(self):
         self.dockwidget.tableResult.setRowCount(0)
         self.dockwidget.tableResult.sortItems(-1)
+        self.dockwidget.tableResult.reset()
 
         sellayer = self.dockwidget.combo_layers.currentText()
         if self.layer:
@@ -715,9 +719,10 @@ class DataSearcher:
                     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
                     mogrified_query = cursor.mogrify(query, attributes_values)
-                    #print(mogrified_query)
+                    # print(mogrified_query)
                     cursor.execute(mogrified_query)
                     results = cursor.fetchall()
+                    # print(results)
 
                     cnt_rows = len(results)
                     self.iface.mainWindow().statusBar().showMessage(u'Всего найдено: ' + str(cnt_rows))
