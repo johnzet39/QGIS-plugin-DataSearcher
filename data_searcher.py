@@ -745,6 +745,7 @@ class DataSearcher:
                                     item = QTableWidgetItem(str(cell_result))
                                     table.setItem(rn, cn, item)
                         table.resizeColumnsToContents()
+                        table.resizeRowsToContents()
                     
                     else:
                         table.setEnabled(False)
