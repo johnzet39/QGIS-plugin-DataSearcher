@@ -15,3 +15,4 @@ about.py
 about_ui.*
 about.png
 queries/ad_geo_constructions.sql
+queries/geo_mkd_data.sql
