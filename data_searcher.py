@@ -875,8 +875,7 @@ class DataSearcher:
             if self.layer.geometryType() == QgsWkbTypes.PointGeometry:
                 box = feature.geometry().buffer(50, 1).boundingBox()
             else: # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!does not tested
-                box = feature.geometry().boundingBox()
-                box = box.grow(box.heigth * 0.2)
+                box = feature.geometry().buffer(50, 1).boundingBox()
             self.iface.mapCanvas().setExtent(box)
             self.iface.mapCanvas().refresh()
             break
@@ -891,9 +890,13 @@ class DataSearcher:
         if len(selectedIds) > 0:
             self.layer.setSubsetString('"{0}" in ({1})'.format(self.column_key, 
                                                                ', '.join(selectedIds)))
+            ltw = self.iface.layerTreeView()
+            ltw.refreshLayerSymbology(self.layer.id())
 
     def clearFilterMapBySelect(self):
         self.layer.setSubsetString('')
+        ltw = self.iface.layerTreeView()
+        ltw.refreshLayerSymbology(self.layer.id())
 
     def copySelected(self):
         table = self.dockwidget.tableResult
