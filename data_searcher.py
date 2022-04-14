@@ -23,9 +23,9 @@
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt, QVariant, QSize
 from qgis.PyQt.QtGui import QIcon, QIntValidator, QDoubleValidator
-from qgis.PyQt.QtWidgets import QAction, QTableWidgetItem, QApplication, QDialog
+from qgis.PyQt.QtWidgets import QAction, QTableWidgetItem, QApplication, QDialog, QSizePolicy
 from qgis.PyQt import QtGui, QtWidgets, uic
-from qgis.core import QgsProject, QgsVectorLayer, QgsRelation, QgsDataSourceUri, QgsWkbTypes 
+from qgis.core import QgsProject, QgsVectorLayer, QgsRelation, QgsDataSourceUri, QgsWkbTypes, QgsCoordinateTransform, QgsCoordinateTransformContext
 from qgsdatetimeedit import QgsDateTimeEdit
 from qgsfilterlineedit import QgsFilterLineEdit
 # Initialize Qt resources from file resources.py
@@ -474,6 +474,7 @@ class DataSearcher:
             if minmax_size:
                 widget.setMinimumWidth(minmax_size[0])
                 widget.setMaximumWidth(minmax_size[1])
+        widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         return widget
 
     def createWidgetSame(self, field_name, field, content):
@@ -707,6 +708,10 @@ class DataSearcher:
             elif isinstance(value_query, str):
                 query = self.readQueryFromFile(value_query)
 
+            sprs_string = self.getSprsString() #отдельно справочники из слоев формируем в sql-текст
+            query = sprs_string + query
+            # print(query)
+
             attributes_values = self.generateQueryAttributesValues(fields)
             #print(attributes_values)
 
@@ -762,6 +767,101 @@ class DataSearcher:
                 finally:
                     cursor.close()
                     conn.close()
+
+    def getSprsString(self):
+        sprs_string = ''
+        sellayer = self.layer.name()
+        sprs_settings = self.settings["Layers"][sellayer].get("sprs", None)
+        if sprs_settings is not None:
+            sprs_dict = self.generateSprs(sprs_settings)
+            sprs_string = self.generateSprsString(sprs_dict)
+        return sprs_string
+
+    def generateSprsString(self, sprs_dict):
+        result_str = ''
+        str_list = []
+        for spr_name, spr_data in sprs_dict.items():
+            list_records_string = []
+            for record in spr_data:
+                list_records_string.append(f'SELECT {record[0]} as id, \'{record[1]}\' as value')
+            string_join = ' union all '.join(list_records_string)
+            spr_string = f'{spr_name} as ({string_join})'
+
+            str_list.append(spr_string)
+
+        if len(str_list) > 0: 
+            result_str = 'with ' + ', '.join(str_list) + ' '
+        return result_str
+            
+
+    def generateSprs(self, sprs):
+        # print(sprs)
+        sprs_dict = {}
+        for spr in sprs:
+            source_type = sprs[spr].get("source_type", None)
+            if source_type is None:
+                print(f'Not found property "source_type" for spr "{spr}" in json-file')
+                continue
+            if source_type == "layer_mapfields":
+                try:
+                    layer_name = sprs[spr]["layer_name"]
+                    field_name = sprs[spr]["field_name"]
+                except Exception as E:
+                    print(f'func generateSprs: {E}')
+                    continue
+                if len(QgsProject.instance().mapLayersByName(layer_name)) < 1:
+                    print(f'func generateSprs: Layer "{layer_name}" not found.')
+                    continue
+                layer = QgsProject.instance().mapLayersByName(layer_name)[0]
+                idx_field = layer.fields().indexFromName(field_name)
+                if idx_field < 0:
+                    print(f'func generateSprs: field {field_name} is not found in layer: {layer_name}')
+                    continue
+                field_type = layer.editorWidgetSetup(idx_field).type()
+
+                spr_data = []
+                if field_type == 'ValueMap':
+                # comboBox.setSizeAdjustPolicy(2) # AdjustToMinimumContentsLengthWithIcon = 2
+                    valuemap = layer.editorWidgetSetup(idx_field).config()['map']
+                    # print(valuemap)
+                    for item in valuemap:
+                        value = list(item.keys())[0]
+                        key = item[value]
+                        if key == '{2839923C-8B7D-419E-B84B-CA2FE9B80EC7}':
+                            continue
+                        spr_data.append([key, value])
+
+                    # print(spr_data)
+                    sprs_dict[spr] = spr_data
+                else:
+                    print(f'func generateSprs: field {field_name} is not ValueMap type (layer: {layer_name})')
+                    continue
+
+            elif source_type == "layer_data":
+                try:
+                    layer_name = sprs[spr]["layer_name"]
+                    field_key = sprs[spr]["field_key"]
+                    field_title = sprs[spr]["field_title"]
+                except Exception as E:
+                    print(f'func generateSprs: {E}')
+                    continue
+                
+                if len(QgsProject.instance().mapLayersByName(layer_name)) < 1:
+                    print(f'func generateSprs: Layer "{layer_name}" not found.')
+                    continue
+                layer = QgsProject.instance().mapLayersByName(layer_name)[0]
+
+                spr_data = []
+                for feat in layer.getFeatures():
+                    spr_data.append([feat[field_key], feat[field_title]])
+                # print(spr_data)
+                sprs_dict[spr] = spr_data
+
+        # print("sprs_dict", sprs_dict)
+        return(sprs_dict)
+
+
+
 
     def generateQueryAttributesValues(self, fields):
         values_dict = {}
@@ -848,6 +948,14 @@ class DataSearcher:
             self.iface.openFeatureForm(self.layer, feature, False, False)
 
     def centerToSelect(self):
+        target_crs = self.iface.mapCanvas().mapSettings().destinationCrs()
+        source_crs = self.layer.crs()
+        is_chage_crs = False
+        if target_crs != source_crs:
+            transform = QgsCoordinateTransform(source_crs, target_crs, QgsCoordinateTransformContext())
+            is_chage_crs = True
+            print('diff crs')
+
         table = self.dockwidget.tableResult
         row = table.currentRow()
         featuresById = self.layer.getFeatures("{0} = {1}".format(
@@ -856,12 +964,23 @@ class DataSearcher:
         self.layer.selectByIds([])
         for feature in featuresById:
             self.layer.select(feature.id())
-            self.iface.mapCanvas().setCenter(feature.geometry().boundingBox().center())
+            feat_geometry = feature.geometry()
+            if is_chage_crs:
+                    feat_geometry.transform(transform)
+            self.iface.mapCanvas().setCenter(feat_geometry.boundingBox().center())
             self.iface.mapCanvas().refresh()
             break
         del featuresById
 
     def zoomToSelect(self):
+        target_crs = self.iface.mapCanvas().mapSettings().destinationCrs()
+        source_crs = self.layer.crs()
+        is_chage_crs = False
+        if target_crs != source_crs:
+            transform = QgsCoordinateTransform(source_crs, target_crs, QgsCoordinateTransformContext())
+            is_chage_crs = True
+            print('diff crs')
+
         table = self.dockwidget.tableResult
         row = table.currentRow()
         featuresById = self.layer.getFeatures("{0} = {1}".format(
@@ -873,9 +992,15 @@ class DataSearcher:
 
             box = None
             if self.layer.geometryType() == QgsWkbTypes.PointGeometry:
-                box = feature.geometry().buffer(50, 1).boundingBox()
+                feat_geometry = feature.geometry()
+                if is_chage_crs:
+                    feat_geometry.transform(transform)
+                box = feat_geometry.buffer(50, 1).boundingBox()
             else: # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!does not tested
-                box = feature.geometry().buffer(50, 1).boundingBox()
+                feat_geometry = feature.geometry()
+                if is_chage_crs:
+                    feat_geometry.transform(transform)
+                box = feat_geometry.buffer(50, 1).boundingBox()
             self.iface.mapCanvas().setExtent(box)
             self.iface.mapCanvas().refresh()
             break
